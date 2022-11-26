@@ -28,25 +28,29 @@ import {
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import FirstAac from './screens/firstAac';
+import { Provider } from 'react-redux';
+import { Store } from './redux/store';
 
 const Stack = createNativeStackNavigator();
 
 const App = () => {
 
   return (
-      <NavigationContainer>
-        <Stack.Navigator
-        initialRouteName='FirstAac'
-        >
-          <Stack.Screen 
-            name='FirstAac'
-            component={FirstAac}
-            options={{
-              headerShown: false
-            }}
-          />
-        </Stack.Navigator>
-      </NavigationContainer>
+    <Provider store={Store}>
+        <NavigationContainer>
+          <Stack.Navigator
+          initialRouteName='FirstAac'
+          >
+            <Stack.Screen 
+              name='FirstAac'
+              component={FirstAac}
+              options={{
+                headerShown: false
+              }}
+            />
+          </Stack.Navigator>
+        </NavigationContainer>
+    </Provider>
   );
 };
 
