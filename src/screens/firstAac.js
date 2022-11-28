@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
     View,
     Text,
@@ -8,16 +8,17 @@ import {
     Dimensions,
     Pressable,
     ScrollView,
-    Image
+    Image,
+    LogBox
 } from 'react-native';
-import Sound from "react-native-sound";
 import SQLite from 'react-native-sqlite-storage';
 import { useSelector, useDispatch } from 'react-redux';
-import { addWords, removeWord, removeAllWords, setPageData, setPageName, setWidth} from "../redux/actions";
+import { addWords, removeWord, removeAllWords, setPageData, setPageNamem, setEdit, setTalking} from "../redux/actions";
 import initRowsAndTables from "../utils/initDB";
 import { initFirstAAC } from "../utils/initDB";
 import { dropTable } from "../utils/initDB";
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
+import Tts from 'react-native-tts';
 
 const db = SQLite.openDatabase(
     {
@@ -31,7 +32,11 @@ const db = SQLite.openDatabase(
 )
 
 export default function FirstAac({navigation}) {
-    const { words, pageName, pageData, width } = useSelector(state => state.wordsReducer);
+
+
+    LogBox.ignoreLogs(['new NativeEventEmitter'])
+
+    const { words, pageName, pageData, talking, edit} = useSelector(state => state.wordsReducer);
     const dispatch = useDispatch();
     const [page, setPage] = useState([])
 
@@ -57,47 +62,55 @@ export default function FirstAac({navigation}) {
         }
     }
 
-    useEffect(() => {
-        getPageData('firstAac');
-        dispatch(setWidth(Dimensions.get('window').width))
-        Dimensions.addEventListener('change', () => {
-            dispatch(setWidth(Dimensions.get('window').width))
-        })
-    }, [])
-
-    const playSound = (sound) => {
-        Sound.setCategory('Playback')
-
-        let soundToPlay = new Sound(sound, Sound.MAIN_BUNDLE, (error) => {
-            if (error) {
-                console.log('failed to load the sound', error);
-                return;
-            } else {
-                soundToPlay.play((success) => {
-                    if (success) {
-                        console.log('Successfully played sound')
-                        soundToPlay.release()
-                    } else {
-                        console.log('Failed to play sound due to decoding issues')
-                        soundToPlay.release()
-                    }
-                })
-            }
-
+    const speakFunction = (text) => {
+        Tts.speak(text, {
+            androidParams: {
+                KEY_PARAM_PAN: -1,
+                KEY_PARAM_VOLUME: 1.0,
+                KEY_PARAM_STREAM: 'STREAM_MUSIC',
+              }
         })
     }
 
-    const updateData = (row, update, updateValue, filter, filterValue) => {
+    useEffect(() => {
+        getPageData('firstAac');
+        Tts.addEventListener('tts-start', () => dispatch(setTalking(true)))
+        Tts.addEventListener('tts-finish', () => dispatch(setTalking(false)))
+        Tts.setDucking(true)
+    }, [])
+
+    const readAllWords = () => {
+        if (talking == true) {
+            return;
+        }
+        
+        for (let i = 0; i < words.length; i++) {
+            Tts.speak(words[i].text, {
+                androidParams: {
+                    KEY_PARAM_PAN: -1,
+                    KEY_PARAM_VOLUME: 1.0,
+                    KEY_PARAM_STREAM: 'STREAM_MUSIC',
+                  }
+            })
+        }
+    }
+
+    
+
+    const updateData = (page, update, updateValue, filter, filterValue) => {
         try {
             console.log('I am in try')
             db.transaction((tx) => {
                 console.log('I am executing sql')
                 tx.executeSql(
-                    "UPDATE " + row + " SET " + update + ' = ' + updateValue + " WHERE " + filter + ' = ' + filterValue,
+                    "UPDATE " + page + " SET " + update + ' = ' + updateValue + " WHERE " + filter + ' = ' + filterValue,
                     [],
                     (tx, results) => {
                         console.log(results)
                         console.log('log updated successfully')
+                    },
+                    (error) => {
+                        console.log(error)
                     }
                 )
             })
@@ -106,20 +119,28 @@ export default function FirstAac({navigation}) {
         }
     }
 
+    const topFlatList = useRef(null)
+    const screenWidth = Dimensions.get('window').width
+
     return(
         <View style={styles.body}>
             <View style={styles.top_rect}>            
                 <FlatList 
                     data={words}
                     horizontal={true}
+                    ref={topFlatList}
+                    onContentSizeChange={() => topFlatList.current.scrollToEnd()}
                     renderItem={({item}) => {
                         return (
                             <View>
-                                <Image 
-                                    source={require('../utils/images/like.png')}
-                                />
-                                <Text style={styles.top_text}> {item.text}</Text>
-
+                                <Pressable onPress={readAllWords}>
+                                    <Image 
+                                        source={{uri: item.text}}
+                                        style={styles.image_big}
+                                    />
+                                    <Text 
+                                    style={styles.top_text}> {item.text}</Text>
+                                </Pressable>
                             </View>
                         )
                     }}
@@ -127,10 +148,13 @@ export default function FirstAac({navigation}) {
                 <View style={styles.delete}>
                     <TouchableOpacity
                     onPress={() => {
-                        console.log('delete is pressed')
+                        Tts.stop()
                         dispatch(removeWord())
                     }}
-                    onLongPress={() => dispatch(removeAllWords())}
+                    onLongPress={() => {
+                        Tts.stop()
+                        dispatch(removeAllWords())       
+                    }}
                     >
                         <FontAwesome5 
                             name={'backspace'}
@@ -139,6 +163,71 @@ export default function FirstAac({navigation}) {
                     </TouchableOpacity>
                 </View>
             </View>
+            <View style={styles.gray_rect}>
+
+                    {edit ? 
+                    <View style={styles.gray_rect_dimensions}>
+                        <Pressable>
+                            <FontAwesome5 
+                                name={'home'}
+                                size={screenWidth / 60}
+                                color={'#BDBDBD'}
+                                style={styles.back_button}
+                            />
+                        </Pressable>
+                        <Pressable>
+                            <FontAwesome5 
+                                name={'arrow-left'}
+                                size={screenWidth / 60}
+                                color={'#BDBDBD'}
+                            />
+                        </Pressable>
+                        <Pressable 
+                            onPress={() => {
+                                dispatch(setEdit(false))
+                            }}
+                        >
+                            <FontAwesome5 
+                                name={'check'}
+                                size={screenWidth / 60}
+                                color={'#fff'}
+                                style={styles.edit_button}
+                            />
+                        </Pressable>
+                    </View>
+                    :                     
+                    <View style={styles.gray_rect_dimensions}>
+                        <Pressable>
+                            <FontAwesome5 
+                                name={'home'}
+                                size={screenWidth / 60}
+                                color={'#fff'}
+                                style={styles.back_button}
+                            />
+                        </Pressable>
+                        <Pressable>
+                            <FontAwesome5 
+                                name={'arrow-left'}
+                                size={screenWidth / 60}
+                                color={'#fff'}
+                            />
+                        </Pressable>
+                        <Pressable
+                            onPress={() => {
+                                dispatch(setEdit(true))
+                            }}
+                        >
+                            <FontAwesome5 
+                                name={'edit'}
+                                size={screenWidth / 60}
+                                color={'#fff'}
+                                style={styles.edit_button}
+                            />
+                        </Pressable>
+                    </View>
+                    }
+
+            </View>
                 <FlatList
                     data={pageData.slice(0,8)}
                     horizontal={true}
@@ -146,28 +235,101 @@ export default function FirstAac({navigation}) {
                     style={{backgroundColor: 'white'}}
                     scrollEnabled={false}
                     renderItem={ ({item}) => {
-                        if (item.row == 'a') {
-                            return(
-                                <Pressable 
-                                onPress={() => {
-                                    playSound(item.sound)
-                                    dispatch(addWords({text: item.text, image: item.image}))
-                                }}
-                                android_disableSound={true}
-                                style={[
-                                    {width: width / 7},
-                                    styles.aac_list
-                                    ]}>
-                                    <Text style={styles.core_text}>
-                                        {item.text}
-                                    </Text>
-                                    <Image 
-                                    source={require('../utils/images/like.png')}
-                                    style={styles.image}
-                                    />
-                                </Pressable>
-                            )
+                        if (edit == false) {
+                            if (item.visibility == 1) {
+                                return(
+                                    <Pressable 
+                                    onPress={() => {
+                                        speakFunction(item.text)
+                                        dispatch(addWords({text: item.text, image: item.image}))
+                                    }}
+                                    android_disableSound={true}
+                                    style={[
+                                        {width: screenWidth / 7},
+                                        styles.aac_list
+                                        ]}>
+                                        <Text style={styles.core_text}>
+                                            {item.text}
+                                        </Text>
+                                        <Image 
+                                        source={{uri: item.text}}
+                                        style={styles.image}
+                                        />
+                                    </Pressable>
+                                )
+                            } else {
+                                return(
+                                    <Pressable 
+                                    android_disableSound={true}
+                                    style={[
+                                        {width: screenWidth / 7},
+                                        styles.aac_list
+                                        ]}
+                                        />
+                                )
+                            }
+                        } else {
+                            if (item.visibility == 1) {
+                                return(
+                                    <Pressable 
+                                    onPress={() => {
+                                            updateData(item.page, 'visibility', 0, 'ID', item.ID)
+                                            getPageData('firstAac');                     
+                                    }}
+                                    android_disableSound={true}
+                                    style={[
+                                        {width: screenWidth / 7},
+                                        styles.aac_list
+                                        ]}>
+
+                                        <Text style={styles.core_text}>
+                                            {item.text}
+                                        </Text>
+                                        <Image 
+                                        source={{uri: item.text}}
+                                        style={styles.image}
+                                        />
+                                        <View style={styles.edit_check}>
+                                            <FontAwesome5 
+                                                name={'check'}
+                                                size={Dimensions.get('window').width / 40}
+                                                color={item.visibility ? '#558B2F' : '#000'}
+                                            />
+                                        </View>
+                                    </Pressable>
+                                )
+                            } else {
+                                return(
+                                    <Pressable 
+                                    onPress={() => {
+                                            updateData(item.page, 'visibility', 1, 'ID', item.ID)
+                                            getPageData('firstAac');                     
+                                    }}
+                                    android_disableSound={true}
+                                    style={[
+                                        {width: screenWidth / 7},
+                                        styles.aac_list
+                                        ]}>
+
+                                        <Text style={styles.core_text}>
+                                            {item.text}
+                                        </Text>
+                                        <Image 
+                                        source={{uri: item.text}}
+                                        style={styles.image}
+                                        />
+                                        <View style={styles.edit_check}>
+                                            <FontAwesome5 
+                                                name={'check'}
+                                                size={Dimensions.get('window').width / 40}
+                                                color={item.visibility ? '#558B2F' : '#000'}
+                                            />
+                                        </View>
+                                    </Pressable>
+                                )
+                            }  
                         }
+
                     }} 
 
 
@@ -181,26 +343,99 @@ export default function FirstAac({navigation}) {
                     style={{backgroundColor: 'white'}}
                     scrollEnabled={false}
                     renderItem={ ({item}) => {
-                        if (item.row == 'b') {
-                            return(
-                                <Pressable 
-                                onPress={() => {
-                                    playSound(item.sound)
-                                    dispatch(addWords({text: item.text, image: item.image}))
-                                }}
-                                android_disableSound={true}
-                                style={[
-                                    {width: width / 7},
-                                    styles.aac_list
-                                    ]}>
-                                    <Text style={styles.core_text}>
-                                        {item.text}
-                                    </Text>
-                                    <Image 
-                                    source={require('../utils/images/go.png')}
-                                    />
-                                </Pressable>
-                            )
+                        if (edit == false) {
+                            if (item.visibility == 1) {
+                                return(
+                                    <Pressable 
+                                    onPress={() => {
+                                        speakFunction(item.text)
+                                        dispatch(addWords({text: item.text, image: item.image}))
+                                    }}
+                                    android_disableSound={true}
+                                    style={[
+                                        {width: screenWidth / 7},
+                                        styles.aac_list
+                                        ]}>
+                                        <Text style={styles.core_text}>
+                                            {item.text}
+                                        </Text>
+                                        <Image 
+                                        source={{uri: item.text}}
+                                        style={styles.image}
+                                        />
+                                    </Pressable>
+                                )
+                            } else {
+                                return(
+                                    <Pressable 
+                                    android_disableSound={true}
+                                    style={[
+                                        {width: screenWidth / 7},
+                                        styles.aac_list
+                                        ]}
+                                        />
+                                )
+                            }
+                        } else {
+                            if (item.visibility == 1) {
+                                return(
+                                    <Pressable 
+                                    onPress={() => {
+                                            updateData(item.page, 'visibility', 0, 'ID', item.ID)
+                                            getPageData('firstAac');                     
+                                    }}
+                                    android_disableSound={true}
+                                    style={[
+                                        {width: screenWidth / 7},
+                                        styles.aac_list
+                                        ]}>
+
+                                        <Text style={styles.core_text}>
+                                            {item.text}
+                                        </Text>
+                                        <Image 
+                                        source={{uri: item.text}}
+                                        style={styles.image}
+                                        />
+                                        <View style={styles.edit_check}>
+                                            <FontAwesome5 
+                                                name={'check'}
+                                                size={Dimensions.get('window').width / 40}
+                                                color={item.visibility ? '#558B2F' : '#000'}
+                                            />
+                                        </View>
+                                    </Pressable>
+                                )
+                            } else {
+                                return(
+                                    <Pressable 
+                                    onPress={() => {
+                                            updateData(item.page, 'visibility', 1, 'ID', item.ID)
+                                            getPageData('firstAac');                     
+                                    }}
+                                    android_disableSound={true}
+                                    style={[
+                                        {width: screenWidth / 7},
+                                        styles.aac_list
+                                        ]}>
+
+                                        <Text style={styles.core_text}>
+                                            {item.text}
+                                        </Text>
+                                        <Image 
+                                        source={{uri: item.text}}
+                                        style={styles.image}
+                                        />
+                                        <View style={styles.edit_check}>
+                                            <FontAwesome5 
+                                                name={'check'}
+                                                size={Dimensions.get('window').width / 40}
+                                                color={item.visibility ? '#558B2F' : '#000'}
+                                            />
+                                        </View>
+                                    </Pressable>
+                                )
+                            }  
                         }
                     }}
                 >
@@ -212,26 +447,99 @@ export default function FirstAac({navigation}) {
                     style={{backgroundColor: 'white'}}
                     scrollEnabled={false}
                     renderItem={ ({item}) => {
-                        if (item.row == 'c') {
-                            return(
-                                <Pressable 
-                                onPress={() => {
-                                    playSound(item.sound)
-                                    dispatch(addWords({text: item.text, image: item.image}))
-                                }}
-                                android_disableSound={true}
-                                style={[
-                                    {width: width / 7},
-                                    styles.aac_list
-                                    ]}>
-                                    <Text style={styles.core_text}>
-                                        {item.text}
-                                    </Text>
-                                    <Image 
-                                    source={require('../utils/images/i.png')}
-                                    />
-                                </Pressable>
-                            )
+                        if (edit == false) {
+                            if (item.visibility == 1) {
+                                return(
+                                    <Pressable 
+                                    onPress={() => {
+                                        speakFunction(item.text)
+                                        dispatch(addWords({text: item.text, image: item.image}))
+                                    }}
+                                    android_disableSound={true}
+                                    style={[
+                                        {width: screenWidth / 7},
+                                        styles.aac_list
+                                        ]}>
+                                        <Text style={styles.core_text}>
+                                            {item.text}
+                                        </Text>
+                                        <Image 
+                                        source={{uri: item.text}}
+                                        style={styles.image}
+                                        />
+                                    </Pressable>
+                                )
+                            } else {
+                                return(
+                                    <Pressable 
+                                    android_disableSound={true}
+                                    style={[
+                                        {width: screenWidth / 7},
+                                        styles.aac_list
+                                        ]}
+                                        />
+                                )
+                            }
+                        } else {
+                            if (item.visibility == 1) {
+                                return(
+                                    <Pressable 
+                                    onPress={() => {
+                                            updateData(item.page, 'visibility', 0, 'ID', item.ID)
+                                            getPageData('firstAac');                     
+                                    }}
+                                    android_disableSound={true}
+                                    style={[
+                                        {width: screenWidth / 7},
+                                        styles.aac_list
+                                        ]}>
+
+                                        <Text style={styles.core_text}>
+                                            {item.text}
+                                        </Text>
+                                        <Image 
+                                        source={{uri: item.text}}
+                                        style={styles.image}
+                                        />
+                                        <View style={styles.edit_check}>
+                                            <FontAwesome5 
+                                                name={'check'}
+                                                size={Dimensions.get('window').width / 40}
+                                                color={item.visibility ? '#558B2F' : '#000'}
+                                            />
+                                        </View>
+                                    </Pressable>
+                                )
+                            } else {
+                                return(
+                                    <Pressable 
+                                    onPress={() => {
+                                            updateData(item.page, 'visibility', 1, 'ID', item.ID)
+                                            getPageData('firstAac');                     
+                                    }}
+                                    android_disableSound={true}
+                                    style={[
+                                        {width: screenWidth / 7},
+                                        styles.aac_list
+                                        ]}>
+
+                                        <Text style={styles.core_text}>
+                                            {item.text}
+                                        </Text>
+                                        <Image 
+                                        source={{uri: item.text}}
+                                        style={styles.image}
+                                        />
+                                        <View style={styles.edit_check}>
+                                            <FontAwesome5 
+                                                name={'check'}
+                                                size={Dimensions.get('window').width / 40}
+                                                color={item.visibility ? '#558B2F' : '#000'}
+                                            />
+                                        </View>
+                                    </Pressable>
+                                )
+                            }  
                         }
                     }}
                 >
@@ -243,26 +551,99 @@ export default function FirstAac({navigation}) {
                     style={{backgroundColor: 'white'}}
                     scrollEnabled={false}
                     renderItem={ ({item}) => {
-                        if (item.row == 'd') {
-                            return(
-                                <Pressable 
-                                onPress={() => {
-                                    playSound(item.sound)
-                                    dispatch(addWords({text: item.text, image: item.image}))
-                                }}
-                                android_disableSound={true}
-                                style={[
-                                    {width: width / 7},
-                                    styles.aac_list
-                                    ]}>
-                                    <Text style={styles.core_text}>
-                                        {item.text}
-                                    </Text>
-                                    <Image 
-                                    source={require('../utils/images/want.png')}
-                                    />
-                                </Pressable>
-                            )
+                        if (edit == false) {
+                            if (item.visibility == 1) {
+                                return(
+                                    <Pressable 
+                                    onPress={() => {
+                                        speakFunction(item.text)
+                                        dispatch(addWords({text: item.text, image: item.image}))
+                                    }}
+                                    android_disableSound={true}
+                                    style={[
+                                        {width: screenWidth / 7},
+                                        styles.aac_list
+                                        ]}>
+                                        <Text style={styles.core_text}>
+                                            {item.text}
+                                        </Text>
+                                        <Image 
+                                        source={{uri: item.text}}
+                                        style={styles.image}
+                                        />
+                                    </Pressable>
+                                )
+                            } else {
+                                return(
+                                    <Pressable 
+                                    android_disableSound={true}
+                                    style={[
+                                        {width: screenWidth / 7},
+                                        styles.aac_list
+                                        ]}
+                                        />
+                                )
+                            }
+                        } else {
+                            if (item.visibility == 1) {
+                                return(
+                                    <Pressable 
+                                    onPress={() => {
+                                            updateData(item.page, 'visibility', 0, 'ID', item.ID)
+                                            getPageData('firstAac');                     
+                                    }}
+                                    android_disableSound={true}
+                                    style={[
+                                        {width: screenWidth / 7},
+                                        styles.aac_list
+                                        ]}>
+
+                                        <Text style={styles.core_text}>
+                                            {item.text}
+                                        </Text>
+                                        <Image 
+                                        source={{uri: item.text}}
+                                        style={styles.image}
+                                        />
+                                        <View style={styles.edit_check}>
+                                            <FontAwesome5 
+                                                name={'check'}
+                                                size={Dimensions.get('window').width / 40}
+                                                color={item.visibility ? '#558B2F' : '#000'}
+                                            />
+                                        </View>
+                                    </Pressable>
+                                )
+                            } else {
+                                return(
+                                    <Pressable 
+                                    onPress={() => {
+                                            updateData(item.page, 'visibility', 1, 'ID', item.ID)
+                                            getPageData('firstAac');                     
+                                    }}
+                                    android_disableSound={true}
+                                    style={[
+                                        {width: screenWidth / 7},
+                                        styles.aac_list
+                                        ]}>
+
+                                        <Text style={styles.core_text}>
+                                            {item.text}
+                                        </Text>
+                                        <Image 
+                                        source={{uri: item.text}}
+                                        style={styles.image}
+                                        />
+                                        <View style={styles.edit_check}>
+                                            <FontAwesome5 
+                                                name={'check'}
+                                                size={Dimensions.get('window').width / 40}
+                                                color={item.visibility ? '#558B2F' : '#000'}
+                                            />
+                                        </View>
+                                    </Pressable>
+                                )
+                            }  
                         }
                     }}
                 >
@@ -274,26 +655,99 @@ export default function FirstAac({navigation}) {
                     style={{backgroundColor: 'white'}}
                     scrollEnabled={false}
                     renderItem={ ({item}) => {
-                        if (item.row == 'e') {
-                            return(
-                                <Pressable 
-                                onPress={() => {
-                                    playSound(item.sound)
-                                    dispatch(addWords({text: item.text, image: item.image}))
-                                }}
-                                android_disableSound={true}
-                                style={[
-                                    {width: width / 7},
-                                    styles.aac_list
-                                    ]}>
-                                    <Text style={styles.core_text}>
-                                        {item.text}
-                                    </Text>
-                                    <Image 
-                                    source={require('../utils/images/you.png')}
-                                    />
-                                </Pressable>
-                            )
+                        if (edit == false) {
+                            if (item.visibility == 1) {
+                                return(
+                                    <Pressable 
+                                    onPress={() => {
+                                        speakFunction(item.text)
+                                        dispatch(addWords({text: item.text, image: item.image}))
+                                    }}
+                                    android_disableSound={true}
+                                    style={[
+                                        {width: screenWidth / 7},
+                                        styles.aac_list
+                                        ]}>
+                                        <Text style={styles.core_text}>
+                                            {item.text}
+                                        </Text>
+                                        <Image 
+                                        source={{uri: item.text}}
+                                        style={styles.image}
+                                        />
+                                    </Pressable>
+                                )
+                            } else {
+                                return(
+                                    <Pressable 
+                                    android_disableSound={true}
+                                    style={[
+                                        {width: screenWidth / 7},
+                                        styles.aac_list
+                                        ]}
+                                        />
+                                )
+                            }
+                        } else {
+                            if (item.visibility == 1) {
+                                return(
+                                    <Pressable 
+                                    onPress={() => {
+                                            updateData(item.page, 'visibility', 0, 'ID', item.ID)
+                                            getPageData('firstAac');                     
+                                    }}
+                                    android_disableSound={true}
+                                    style={[
+                                        {width: screenWidth / 7},
+                                        styles.aac_list
+                                        ]}>
+
+                                        <Text style={styles.core_text}>
+                                            {item.text}
+                                        </Text>
+                                        <Image 
+                                        source={{uri: item.text}}
+                                        style={styles.image}
+                                        />
+                                        <View style={styles.edit_check}>
+                                            <FontAwesome5 
+                                                name={'check'}
+                                                size={Dimensions.get('window').width / 40}
+                                                color={item.visibility ? '#558B2F' : '#000'}
+                                            />
+                                        </View>
+                                    </Pressable>
+                                )
+                            } else {
+                                return(
+                                    <Pressable 
+                                    onPress={() => {
+                                            updateData(item.page, 'visibility', 1, 'ID', item.ID)
+                                            getPageData('firstAac');                     
+                                    }}
+                                    android_disableSound={true}
+                                    style={[
+                                        {width: screenWidth / 7},
+                                        styles.aac_list
+                                        ]}>
+
+                                        <Text style={styles.core_text}>
+                                            {item.text}
+                                        </Text>
+                                        <Image 
+                                        source={{uri: item.text}}
+                                        style={styles.image}
+                                        />
+                                        <View style={styles.edit_check}>
+                                            <FontAwesome5 
+                                                name={'check'}
+                                                size={Dimensions.get('window').width / 40}
+                                                color={item.visibility ? '#558B2F' : '#000'}
+                                            />
+                                        </View>
+                                    </Pressable>
+                                )
+                            }  
                         }
                     }}
                 >
@@ -305,27 +759,101 @@ export default function FirstAac({navigation}) {
                     style={{backgroundColor: 'white'}}
                     scrollEnabled={false}
                     renderItem={ ({item}) => {
-                        if (item.row == 'f') {
-                            return(
-                                <Pressable 
-                                onPress={() => {
-                                    playSound(item.sound)
-                                    dispatch(addWords({text: item.text, image: item.image}))
-                                }}
-                                android_disableSound={true}
-                                style={[
-                                    {width: width / 7},
-                                    styles.aac_list
-                                    ]}>
-                                    <Text style={styles.core_text}>
-                                        {item.text}
-                                    </Text>
-                                    <Image 
-                                    source={require('../utils/images/like.png')}
-                                    />
-                                </Pressable>
-                            )
+                        if (edit == false) {
+                            if (item.visibility == 1) {
+                                return(
+                                    <Pressable 
+                                    onPress={() => {
+                                        speakFunction(item.text)
+                                        dispatch(addWords({text: item.text, image: item.image}))
+                                    }}
+                                    android_disableSound={true}
+                                    style={[
+                                        {width: screenWidth / 7},
+                                        styles.aac_list
+                                        ]}>
+                                        <Text style={styles.core_text}>
+                                            {item.text}
+                                        </Text>
+                                        <Image 
+                                        source={{uri: item.text}}
+                                        style={styles.image}
+                                        />
+                                    </Pressable>
+                                )
+                            } else {
+                                return(
+                                    <Pressable 
+                                    android_disableSound={true}
+                                    style={[
+                                        {width: screenWidth / 7},
+                                        styles.aac_list
+                                        ]}
+                                        />
+                                )
+                            }
+                        } else {
+                            if (item.visibility == 1) {
+                                return(
+                                    <Pressable 
+                                    onPress={() => {
+                                            updateData(item.page, 'visibility', 0, 'ID', item.ID)
+                                            getPageData('firstAac');                     
+                                    }}
+                                    android_disableSound={true}
+                                    style={[
+                                        {width: screenWidth / 7},
+                                        styles.aac_list
+                                        ]}>
+
+                                        <Text style={styles.core_text}>
+                                            {item.text}
+                                        </Text>
+                                        <Image 
+                                        source={{uri: item.text}}
+                                        style={styles.image}
+                                        />
+                                        <View style={styles.edit_check}>
+                                            <FontAwesome5 
+                                                name={'check'}
+                                                size={Dimensions.get('window').width / 40}
+                                                color={item.visibility ? '#558B2F' : '#000'}
+                                            />
+                                        </View>
+                                    </Pressable>
+                                )
+                            } else {
+                                return(
+                                    <Pressable 
+                                    onPress={() => {
+                                            updateData(item.page, 'visibility', 1, 'ID', item.ID)
+                                            getPageData('firstAac');                     
+                                    }}
+                                    android_disableSound={true}
+                                    style={[
+                                        {width: screenWidth / 7},
+                                        styles.aac_list
+                                        ]}>
+
+                                        <Text style={styles.core_text}>
+                                            {item.text}
+                                        </Text>
+                                        <Image 
+                                        source={{uri: item.text}}
+                                        style={styles.image}
+                                        />
+                                        <View style={styles.edit_check}>
+                                            <FontAwesome5 
+                                                name={'check'}
+                                                size={Dimensions.get('window').width / 40}
+                                                color={item.visibility ? '#558B2F' : '#000'}
+                                            />
+                                        </View>
+                                    </Pressable>
+                                )
+                            }  
                         }
+
                     }}
                 >
                 </FlatList>
@@ -336,27 +864,101 @@ export default function FirstAac({navigation}) {
                     style={{backgroundColor: 'white'}}
                     scrollEnabled={false}
                     renderItem={ ({item}) => {
-                        if (item.row == 'g') {
-                            return(
-                                <Pressable 
-                                onPress={() => {
-                                    playSound(item.sound)
-                                    dispatch(addWords({text: item.text, image: item.image}))
-                                }}
-                                android_disableSound={true}
-                                style={[
-                                    {width: width / 7},
-                                    styles.aac_list
-                                    ]}>
-                                    <Text style={styles.core_text}>
-                                        {item.text}
-                                    </Text>
-                                    <Image 
-                                    source={require('../utils/images/go.png')}
-                                    />
-                                </Pressable>
-                            )
+                        if (edit == false) {
+                            if (item.visibility == 1) {
+                                return(
+                                    <Pressable 
+                                    onPress={() => {
+                                        speakFunction(item.text)
+                                        dispatch(addWords({text: item.text, image: item.image}))
+                                    }}
+                                    android_disableSound={true}
+                                    style={[
+                                        {width: screenWidth / 7},
+                                        styles.aac_list
+                                        ]}>
+                                        <Text style={styles.core_text}>
+                                            {item.text}
+                                        </Text>
+                                        <Image 
+                                        source={{uri: item.text}}
+                                        style={styles.image}
+                                        />
+                                    </Pressable>
+                                )
+                            } else {
+                                return(
+                                    <Pressable 
+                                    android_disableSound={true}
+                                    style={[
+                                        {width: screenWidth / 7},
+                                        styles.aac_list
+                                        ]}
+                                        />
+                                )
+                            }
+                        } else {
+                            if (item.visibility == 1) {
+                                return(
+                                    <Pressable 
+                                    onPress={() => {
+                                            updateData(item.page, 'visibility', 0, 'ID', item.ID)
+                                            getPageData('firstAac');                     
+                                    }}
+                                    android_disableSound={true}
+                                    style={[
+                                        {width: screenWidth / 7},
+                                        styles.aac_list
+                                        ]}>
+
+                                        <Text style={styles.core_text}>
+                                            {item.text}
+                                        </Text>
+                                        <Image 
+                                        source={{uri: item.text}}
+                                        style={styles.image}
+                                        />
+                                        <View style={styles.edit_check}>
+                                            <FontAwesome5 
+                                                name={'check'}
+                                                size={Dimensions.get('window').width / 40}
+                                                color={item.visibility ? '#558B2F' : '#000'}
+                                            />
+                                        </View>
+                                    </Pressable>
+                                )
+                            } else {
+                                return(
+                                    <Pressable 
+                                    onPress={() => {
+                                            updateData(item.page, 'visibility', 1, 'ID', item.ID)
+                                            getPageData('firstAac');                     
+                                    }}
+                                    android_disableSound={true}
+                                    style={[
+                                        {width: screenWidth / 7},
+                                        styles.aac_list
+                                        ]}>
+
+                                        <Text style={styles.core_text}>
+                                            {item.text}
+                                        </Text>
+                                        <Image 
+                                        source={require('../utils/images/go.png')}
+                                        style={styles.image}
+                                        />
+                                        <View style={styles.edit_check}>
+                                            <FontAwesome5 
+                                                name={'check'}
+                                                size={Dimensions.get('window').width / 40}
+                                                color={item.visibility ? '#558B2F' : '#000'}
+                                            />
+                                        </View>
+                                    </Pressable>
+                                )
+                            }  
                         }
+
                     }}
                 >
                 </FlatList>
@@ -384,6 +986,8 @@ const styles = StyleSheet.create({
         color: '#000000'
     },
     aac_list: {
+        width: Dimensions.get('window').width / 7,
+        height: Dimensions.get('window').height / 9,
         borderWidth: 1,
         borderColor: '#000000',
         alignItems: 'center',
@@ -407,4 +1011,43 @@ const styles = StyleSheet.create({
         fontSize: 20,
         color: '#000000'
     },
+    image :{
+        width: Dimensions.get('window').width / 20,
+        height: Dimensions.get('window').width / 20,
+        resizeMode: 'contain'
+    },
+    image_big :{
+        width: Dimensions.get('window').width / 16,
+        height: Dimensions.get('window').width / 16,
+        resizeMode: 'contain'
+    },
+    gray_rect: {
+        width: '100%',
+        backgroundColor: 'grey',
+        height: '5%',
+        alignItems: 'center',
+        flexDirection: 'row'
+    },
+    gray_rect_text: {
+        color: '#fff'
+    },
+    back_button: {
+        position: 'relative',
+        left: Dimensions.get('window').width / 2.05,
+    },
+    gray_rect_dimensions: {
+        width: '100%',
+        height: '100%',
+        flexDirection: 'row',
+        alignItems: 'center'
+    },
+    edit_button: {
+        position: 'relative',
+        left: Dimensions.get('window').width / 1.1,
+    },
+    edit_check: {
+        position: 'absolute',
+        left: '70%',
+        bottom: '40%'
+    }
 })

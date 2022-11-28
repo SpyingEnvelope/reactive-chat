@@ -3,7 +3,8 @@ export const REMOVE_WORD = 'REMOVE_WORD';
 export const REMOVE_ALL_WORDS = 'REMOVE_ALL_WORDS';
 export const SET_PAGE_DATA = 'SET_PAGE_DATA';
 export const SET_PAGE_NAME = 'SET_PAGE_NAME';
-export const SET_WIDTH = 'SET_WIDTH'
+export const SET_EDIT = 'SET_EDIT';
+export const SET_TALKING = 'SET_TALKING';
 
 export const addWords = word => dispatch => {
     dispatch({
@@ -40,9 +41,17 @@ export const setPageName = pageName => dispatch => {
     })
 }
 
-export const setWidth = width => dispatch => {
+export const setEdit = edit => dispatch => {
     dispatch({
-        type: SET_WIDTH,
-        payload: width
+        type: SET_EDIT,
+        payload: edit
     })
 }
+
+export const setTalking = talk => dispatch => {
+    dispatch({
+        type: SET_TALKING,
+        payload: talk
+    })
+}
+
