@@ -25,9 +25,10 @@ import {
   LearnMoreLinks,
   ReloadInstructions,
 } from 'react-native/Libraries/NewAppScreen';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, StackActions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import FirstAac from './screens/firstAac';
+import Splash from './screens/splash';
 import { Provider } from 'react-redux';
 import { Store } from './redux/store';
 
@@ -39,11 +40,18 @@ const App = () => {
     <Provider store={Store}>
         <NavigationContainer>
           <Stack.Navigator
-          initialRouteName='FirstAac'
+          initialRouteName='Splash'
           >
             <Stack.Screen 
               name='FirstAac'
               component={FirstAac}
+              options={{
+                headerShown: false
+              }}
+            />
+            <Stack.Screen 
+              name='Splash'
+              component={Splash}
               options={{
                 headerShown: false
               }}

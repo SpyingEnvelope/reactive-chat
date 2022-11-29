@@ -5,6 +5,7 @@ export const SET_PAGE_DATA = 'SET_PAGE_DATA';
 export const SET_PAGE_NAME = 'SET_PAGE_NAME';
 export const SET_EDIT = 'SET_EDIT';
 export const SET_TALKING = 'SET_TALKING';
+export const SET_PAGE_LOADING = 'SET_PAGE_LOADING'
 
 export const addWords = word => dispatch => {
     dispatch({
@@ -52,6 +53,13 @@ export const setTalking = talk => dispatch => {
     dispatch({
         type: SET_TALKING,
         payload: talk
+    })
+}
+
+export const setPageLoading = loading => dispatch => {
+    dispatch({
+        type: SET_PAGE_LOADING,
+        payload: loading
     })
 }
 

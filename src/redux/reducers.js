@@ -1,4 +1,4 @@
-import { ADD_WORDS, REMOVE_WORD, REMOVE_ALL_WORDS, SET_PAGE_DATA, SET_PAGE_NAME, SET_EDIT, SET_TALKING } from "./actions";
+import { ADD_WORDS, REMOVE_WORD, REMOVE_ALL_WORDS, SET_PAGE_DATA, SET_PAGE_NAME, SET_EDIT, SET_TALKING, SET_PAGE_LOADING } from "./actions";
 
 const initialState = {
     words: [],
@@ -6,7 +6,8 @@ const initialState = {
     pageData: [],
     width: 0,
     edit: false,
-    talking: false
+    talking: false,
+    pageLoading: true
 }
 
 function wordsReducer(state = initialState, action) {
@@ -28,7 +29,9 @@ function wordsReducer(state = initialState, action) {
         case SET_EDIT:
             return {...state, edit: action.payload}
         case SET_TALKING:
-            return {...state, talking: action.payload}     
+            return {...state, talking: action.payload} 
+        case SET_PAGE_LOADING:
+            return {...state, pageLoading: action.payload}    
         default:
             return state
     }

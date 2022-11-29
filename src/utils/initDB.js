@@ -1,4 +1,6 @@
 import SQLite from 'react-native-sqlite-storage';
+import { useSelector, useDispatch } from 'react-redux';
+import { addWords, removeWord, removeAllWords, setPageData, setPageName, setEdit, setTalking, setPageLoading} from "../redux/actions";
 
 const db = SQLite.openDatabase(
     {
@@ -63,71 +65,8 @@ const firstAac = [
     ['g', 7, 'firstAac', 1, 'text', '../utils/images/describe.png', 'describe.mp3', 'describe'],
 ]
 
-export default function initRowsAndTables () {
-    db.transaction((tx) => {
-        for (let i = 1; i < 8; i++) {
-            tx.executeSql(
-                "CREATE TABLE IF NOT EXISTS "
-                + "Row" + i + " "
-                + "(ID INTEGER PRIMARY KEY AUTOINCREMENT, row TEXT, column INTEGER, page TEXT, visibility INTEGER, type TEXT, image TEXT, sound TEXT, text TEXT)"
-            )
-            switch(i) {
-                case 1:
-                    for (let j = 0; j < initInsertRow1.length; j++) {
-                        tx.executeSql(
-                            "INSERT INTO Row1 (row, column, page, visibility, type, image, sound, text) VALUES (?,?,?,?,?,?,?,?)",
-                            initInsertRow1[j]
-                        )
-                    }
-                case 2:
-                    for (let j = 0; j < initInsertRow2.length; j++) {
-                        tx.executeSql(
-                            "INSERT INTO Row2 (row, column, page, visibility, type, image, sound, text) VALUES (?,?,?,?,?,?,?,?)",
-                            initInsertRow2[j]
-                        )
-                    }
-                case 3:
-                    for (let j = 0; j < initInsertRow3.length; j++) {
-                        tx.executeSql(
-                            "INSERT INTO Row3 (row, column, page, visibility, type, image, sound, text) VALUES (?,?,?,?,?,?,?,?)",
-                            initInsertRow3[j]
-                        )
-                    }
-                case 4:
-                    for (let j = 0; j < initInsertRow4.length; j++) {
-                        tx.executeSql(
-                            "INSERT INTO Row4 (row, column, page, visibility, type, image, sound, text) VALUES (?,?,?,?,?,?,?,?)",
-                            initInsertRow4[j]
-                        )
-                    }
-                case 5:
-                    for (let j = 0; j < initInsertRow5.length; j++) {
-                        tx.executeSql(
-                            "INSERT INTO Row5 (row, column, page, visibility, type, image, sound, text) VALUES (?,?,?,?,?,?,?,?)",
-                            initInsertRow5[j]
-                        )
-                    }
-                case 6:
-                    for (let j = 0; j < initInsertRow6.length; j++) {
-                        tx.executeSql(
-                            "INSERT INTO Row6 (row, column, page, visibility, type, image, sound, text) VALUES (?,?,?,?,?,?,?,?)",
-                            initInsertRow6[j]
-                        )
-                    }
-                case 7:
-                    for (let j = 0; j < initInsertRow7.length; j++) {
-                        tx.executeSql(
-                            "INSERT INTO Row7 (row, column, page, visibility, type, image, sound, text) VALUES (?,?,?,?,?,?,?,?)",
-                            initInsertRow7[j]
-                        )
-                    }
-            }
-        }
-        console.log('DB was initiated sucessfully')
-    })
-}
-
 export function initFirstAAC() {
+
     db.transaction((tx) => {
         tx.executeSql(
             "CREATE TABLE IF NOT EXISTS " 
@@ -154,8 +93,8 @@ export function initFirstAAC() {
                 },
                 (tn, error) => {
                     console.log('error adding firstAac' + i)
-                    console.log(error)
                     console.log(tn)
+                    return;
                 }
             )
         }

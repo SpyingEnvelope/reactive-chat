@@ -7,13 +7,12 @@ import {
     StyleSheet,
     Dimensions,
     Pressable,
-    ScrollView,
     Image,
     LogBox
 } from 'react-native';
 import SQLite from 'react-native-sqlite-storage';
 import { useSelector, useDispatch } from 'react-redux';
-import { addWords, removeWord, removeAllWords, setPageData, setPageNamem, setEdit, setTalking} from "../redux/actions";
+import { addWords, removeWord, removeAllWords, setPageData, setPageName, setEdit, setTalking} from "../redux/actions";
 import initRowsAndTables from "../utils/initDB";
 import { initFirstAAC } from "../utils/initDB";
 import { dropTable } from "../utils/initDB";
@@ -50,10 +49,11 @@ export default function FirstAac({navigation}) {
                         console.log('found table ' + page)
                         dispatch(setPageData(results.rows.raw()))
                         dispatch(setPageName(page))
+                        return false
                     },
                     (tx, error) => {
-                        console.log(error)
                         console.log(tx)
+                        return true
                     }
                 )
             })
@@ -73,7 +73,6 @@ export default function FirstAac({navigation}) {
     }
 
     useEffect(() => {
-        getPageData('firstAac');
         Tts.addEventListener('tts-start', () => dispatch(setTalking(true)))
         Tts.addEventListener('tts-finish', () => dispatch(setTalking(false)))
         Tts.setDucking(true)
@@ -107,7 +106,6 @@ export default function FirstAac({navigation}) {
                     [],
                     (tx, results) => {
                         console.log(results)
-                        console.log('log updated successfully')
                     },
                     (error) => {
                         console.log(error)
@@ -135,7 +133,7 @@ export default function FirstAac({navigation}) {
                             <View>
                                 <Pressable onPress={readAllWords}>
                                     <Image 
-                                        source={{uri: item.text}}
+                                        source={{uri: item.text + 'img'}}
                                         style={styles.image_big}
                                     />
                                     <Text 
@@ -252,7 +250,7 @@ export default function FirstAac({navigation}) {
                                             {item.text}
                                         </Text>
                                         <Image 
-                                        source={{uri: item.text}}
+                                        source={{uri: item.text + 'img'}}
                                         style={styles.image}
                                         />
                                     </Pressable>
@@ -286,7 +284,7 @@ export default function FirstAac({navigation}) {
                                             {item.text}
                                         </Text>
                                         <Image 
-                                        source={{uri: item.text}}
+                                        source={{uri: item.text + 'img'}}
                                         style={styles.image}
                                         />
                                         <View style={styles.edit_check}>
@@ -315,7 +313,7 @@ export default function FirstAac({navigation}) {
                                             {item.text}
                                         </Text>
                                         <Image 
-                                        source={{uri: item.text}}
+                                        source={{uri: item.text + 'img'}}
                                         style={styles.image}
                                         />
                                         <View style={styles.edit_check}>
@@ -360,7 +358,7 @@ export default function FirstAac({navigation}) {
                                             {item.text}
                                         </Text>
                                         <Image 
-                                        source={{uri: item.text}}
+                                        source={{uri: item.text + 'img'}}
                                         style={styles.image}
                                         />
                                     </Pressable>
@@ -394,7 +392,7 @@ export default function FirstAac({navigation}) {
                                             {item.text}
                                         </Text>
                                         <Image 
-                                        source={{uri: item.text}}
+                                        source={{uri: item.text + 'img'}}
                                         style={styles.image}
                                         />
                                         <View style={styles.edit_check}>
@@ -423,7 +421,7 @@ export default function FirstAac({navigation}) {
                                             {item.text}
                                         </Text>
                                         <Image 
-                                        source={{uri: item.text}}
+                                        source={{uri: item.text + 'img'}}
                                         style={styles.image}
                                         />
                                         <View style={styles.edit_check}>
@@ -464,7 +462,7 @@ export default function FirstAac({navigation}) {
                                             {item.text}
                                         </Text>
                                         <Image 
-                                        source={{uri: item.text}}
+                                        source={{uri: item.text + 'img'}}
                                         style={styles.image}
                                         />
                                     </Pressable>
@@ -498,7 +496,7 @@ export default function FirstAac({navigation}) {
                                             {item.text}
                                         </Text>
                                         <Image 
-                                        source={{uri: item.text}}
+                                        source={{uri: item.text + 'img'}}
                                         style={styles.image}
                                         />
                                         <View style={styles.edit_check}>
@@ -527,7 +525,7 @@ export default function FirstAac({navigation}) {
                                             {item.text}
                                         </Text>
                                         <Image 
-                                        source={{uri: item.text}}
+                                        source={{uri: item.text + 'img'}}
                                         style={styles.image}
                                         />
                                         <View style={styles.edit_check}>
@@ -568,7 +566,7 @@ export default function FirstAac({navigation}) {
                                             {item.text}
                                         </Text>
                                         <Image 
-                                        source={{uri: item.text}}
+                                        source={{uri: item.text + 'img'}}
                                         style={styles.image}
                                         />
                                     </Pressable>
@@ -602,7 +600,7 @@ export default function FirstAac({navigation}) {
                                             {item.text}
                                         </Text>
                                         <Image 
-                                        source={{uri: item.text}}
+                                        source={{uri: item.text + 'img'}}
                                         style={styles.image}
                                         />
                                         <View style={styles.edit_check}>
@@ -631,7 +629,7 @@ export default function FirstAac({navigation}) {
                                             {item.text}
                                         </Text>
                                         <Image 
-                                        source={{uri: item.text}}
+                                        source={{uri: item.text + 'img'}}
                                         style={styles.image}
                                         />
                                         <View style={styles.edit_check}>
@@ -672,7 +670,7 @@ export default function FirstAac({navigation}) {
                                             {item.text}
                                         </Text>
                                         <Image 
-                                        source={{uri: item.text}}
+                                        source={{uri: item.text + 'img'}}
                                         style={styles.image}
                                         />
                                     </Pressable>
@@ -706,7 +704,7 @@ export default function FirstAac({navigation}) {
                                             {item.text}
                                         </Text>
                                         <Image 
-                                        source={{uri: item.text}}
+                                        source={{uri: item.text + 'img'}}
                                         style={styles.image}
                                         />
                                         <View style={styles.edit_check}>
@@ -735,7 +733,7 @@ export default function FirstAac({navigation}) {
                                             {item.text}
                                         </Text>
                                         <Image 
-                                        source={{uri: item.text}}
+                                        source={{uri: item.text + 'img'}}
                                         style={styles.image}
                                         />
                                         <View style={styles.edit_check}>
@@ -776,7 +774,7 @@ export default function FirstAac({navigation}) {
                                             {item.text}
                                         </Text>
                                         <Image 
-                                        source={{uri: item.text}}
+                                        source={{uri: item.text + 'img'}}
                                         style={styles.image}
                                         />
                                     </Pressable>
@@ -810,7 +808,7 @@ export default function FirstAac({navigation}) {
                                             {item.text}
                                         </Text>
                                         <Image 
-                                        source={{uri: item.text}}
+                                        source={{uri: item.text + 'img'}}
                                         style={styles.image}
                                         />
                                         <View style={styles.edit_check}>
@@ -839,7 +837,7 @@ export default function FirstAac({navigation}) {
                                             {item.text}
                                         </Text>
                                         <Image 
-                                        source={{uri: item.text}}
+                                        source={{uri: item.text + 'img'}}
                                         style={styles.image}
                                         />
                                         <View style={styles.edit_check}>
@@ -881,7 +879,7 @@ export default function FirstAac({navigation}) {
                                             {item.text}
                                         </Text>
                                         <Image 
-                                        source={{uri: item.text}}
+                                        source={{uri: item.text + 'img'}}
                                         style={styles.image}
                                         />
                                     </Pressable>
@@ -915,7 +913,7 @@ export default function FirstAac({navigation}) {
                                             {item.text}
                                         </Text>
                                         <Image 
-                                        source={{uri: item.text}}
+                                        source={{uri: item.text + 'img'}}
                                         style={styles.image}
                                         />
                                         <View style={styles.edit_check}>
@@ -944,7 +942,7 @@ export default function FirstAac({navigation}) {
                                             {item.text}
                                         </Text>
                                         <Image 
-                                        source={require('../utils/images/go.png')}
+                                        source={{uri: item.text + 'img'}}
                                         style={styles.image}
                                         />
                                         <View style={styles.edit_check}>
@@ -1004,11 +1002,11 @@ const styles = StyleSheet.create({
         justifyContent: 'center'
     },
     top_text: {
-        fontSize: 50,
+        fontSize: Dimensions.get('window').width / 40,
         color: '#000000'
     },
     core_text: {
-        fontSize: 20,
+        fontSize: Dimensions.get('window').width / 80,
         color: '#000000'
     },
     image :{
@@ -1023,7 +1021,7 @@ const styles = StyleSheet.create({
     },
     gray_rect: {
         width: '100%',
-        backgroundColor: 'grey',
+        backgroundColor: '#1b2127',
         height: '5%',
         alignItems: 'center',
         flexDirection: 'row'
