@@ -58,7 +58,7 @@ export default function Splash({ navigation }) {
 
     useEffect(() => {
         setDisplayText('Loading Database')
-        getPageData('firstAac')
+        getPageData('Main')
     }, [])
 
     useEffect(() => {
@@ -67,7 +67,7 @@ export default function Splash({ navigation }) {
                 dispatch(setPageLoading('FirstAAC failed'))
             } else if (loadCounter == '0') {
                 initFirstAAC()
-                getPageData('firstAac')
+                getPageData('Main')
                 setLoadCounter('1')
             } 
 

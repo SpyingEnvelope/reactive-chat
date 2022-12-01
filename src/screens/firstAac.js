@@ -8,7 +8,9 @@ import {
     Dimensions,
     Pressable,
     Image,
-    LogBox
+    LogBox,
+    Modal,
+    TextInput
 } from 'react-native';
 import SQLite from 'react-native-sqlite-storage';
 import { useSelector, useDispatch } from 'react-redux';
@@ -18,6 +20,7 @@ import { initFirstAAC } from "../utils/initDB";
 import { dropTable } from "../utils/initDB";
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import Tts from 'react-native-tts';
+import { updateData, updateMultiColumns } from "../utils/sql_fucntions";
 
 const db = SQLite.openDatabase(
     {
@@ -37,7 +40,14 @@ export default function FirstAac({navigation}) {
 
     const { words, pageName, pageData, talking, edit} = useSelector(state => state.wordsReducer);
     const dispatch = useDispatch();
-    const [page, setPage] = useState([])
+
+    
+    const [buttonModal, setButtonModal] = useState(false)
+    const [buttonText, setButtonText] = useState('')
+    const [buttonImg, setButtonImg] = useState('')
+    const [buttonColour, setButtonColour] = useState('')
+    const [buttonId, setButtonId] = useState(0)
+    const [page, setPage] = useState('');
 
     function getPageData(page) {
         try{
@@ -94,34 +104,115 @@ export default function FirstAac({navigation}) {
         }
     }
 
-    
-
-    const updateData = (page, update, updateValue, filter, filterValue) => {
-        try {
-            console.log('I am in try')
-            db.transaction((tx) => {
-                console.log('I am executing sql')
-                tx.executeSql(
-                    "UPDATE " + page + " SET " + update + ' = ' + updateValue + " WHERE " + filter + ' = ' + filterValue,
-                    [],
-                    (tx, results) => {
-                        console.log(results)
-                    },
-                    (error) => {
-                        console.log(error)
-                    }
-                )
-            })
-        } catch (e) {
-            console.log(e)
-        }
-    }
-
     const topFlatList = useRef(null)
     const screenWidth = Dimensions.get('window').width
 
     return(
         <View style={styles.body}>
+            <Modal
+                visible={buttonModal}
+                transparent
+                onRequestClose={() => setButtonModal(false)}
+                animationType='slide'
+                hardwareAccelerated
+            >
+                <View style={styles.centered_view}>
+                    <Text style={styles.modal_text}>Text to display</Text>  
+                    <TextInput 
+                        style={styles.modal_input}
+                        value={buttonText}
+                        placeholder='Text for button'
+                        onChangeText={(value) => setButtonText(value)}
+                    >
+                    </TextInput>
+                    <Image 
+                        source={{uri: buttonImg}}
+                        style={styles.modal_image}
+                    />
+                    <Text style={styles.modal_text}>Background Colour</Text>  
+                    <View style={styles.color_bar}>
+                        <TouchableOpacity
+                            style={styles.color_white}
+                            onPress={() => setButtonColour('white')}
+                        >
+                            {
+                                buttonColour == 'white' &&
+                                    <FontAwesome5 
+                                        name={'check'}
+                                        size={screenWidth / 40}
+                                        color={'#000000'}
+                                    />
+                            }
+
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.color_red}
+                            onPress={() => setButtonColour('#f797ac')}
+                        >
+                            {
+                                buttonColour == '#f797ac' &&
+                                    <FontAwesome5 
+                                        name={'check'}
+                                        size={screenWidth / 40}
+                                        color={'#000000'}
+                                    />
+                            }
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.color_blue}
+                            onPress={() => setButtonColour('#a3acf7')}
+                        >
+                            {
+                                buttonColour == '#a3acf7' &&
+                                    <FontAwesome5 
+                                        name={'check'}
+                                        size={screenWidth / 40}
+                                        color={'#000000'}
+                                    />
+                            }
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.color_yellow}
+                            onPress={() => setButtonColour('#f0f7a3')}
+                        >
+                            {
+                                buttonColour == '#f0f7a3' &&
+                                    <FontAwesome5 
+                                        name={'check'}
+                                        size={screenWidth / 40}
+                                        color={'#000000'}
+                                    />
+                            }
+                        </TouchableOpacity>
+                    </View>
+                    <View style={styles.color_bar}>
+                        <TouchableOpacity 
+                            onPress={() => setButtonModal(false)}
+                            style={styles.modal_cancel}
+                        >
+                            <FontAwesome5 
+                                name={'times'}
+                                color={'#f24e79'}
+                                size={screenWidth / 20}
+                            />
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                            onPress={() => {
+                                updateMultiColumns(page, buttonText, buttonColour, buttonImg, buttonId)
+                                getPageData('Main')
+                                setButtonModal(false)
+                            }}
+                            style={styles.modal_submit}
+                        >
+                            <FontAwesome5 
+                                name={'check'}
+                                color={'#77f777'}
+                                size={screenWidth / 20}
+                            />
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
             <View style={styles.top_rect}>            
                 <FlatList 
                     data={words}
@@ -133,11 +224,11 @@ export default function FirstAac({navigation}) {
                             <View>
                                 <Pressable onPress={readAllWords}>
                                     <Image 
-                                        source={{uri: item.text + 'img'}}
+                                        source={{uri: item.image}}
                                         style={styles.image_big}
                                     />
                                     <Text 
-                                    style={styles.top_text}> {item.text}</Text>
+                                        style={styles.top_text}> {item.text}</Text>
                                 </Pressable>
                             </View>
                         )
@@ -243,6 +334,7 @@ export default function FirstAac({navigation}) {
                                     }}
                                     android_disableSound={true}
                                     style={[
+                                        {backgroundColor: item.colour},
                                         {width: screenWidth / 7},
                                         styles.aac_list
                                         ]}>
@@ -250,7 +342,7 @@ export default function FirstAac({navigation}) {
                                             {item.text}
                                         </Text>
                                         <Image 
-                                        source={{uri: item.text + 'img'}}
+                                        source={{uri: item.image}}
                                         style={styles.image}
                                         />
                                     </Pressable>
@@ -272,10 +364,19 @@ export default function FirstAac({navigation}) {
                                     <Pressable 
                                     onPress={() => {
                                             updateData(item.page, 'visibility', 0, 'ID', item.ID)
-                                            getPageData('firstAac');                     
+                                            getPageData('Main');                     
+                                    }}
+                                    onLongPress={() => {
+                                        setButtonText(item.text)
+                                        setButtonImg(item.image)
+                                        setButtonId(item.ID)
+                                        setButtonColour(item.colour)
+                                        setPage(item.page)
+                                        setButtonModal(true)
                                     }}
                                     android_disableSound={true}
                                     style={[
+                                        {backgroundColor: item.colour},
                                         {width: screenWidth / 7},
                                         styles.aac_list
                                         ]}>
@@ -284,7 +385,7 @@ export default function FirstAac({navigation}) {
                                             {item.text}
                                         </Text>
                                         <Image 
-                                        source={{uri: item.text + 'img'}}
+                                        source={{uri: item.image}}
                                         style={styles.image}
                                         />
                                         <View style={styles.edit_check}>
@@ -301,10 +402,19 @@ export default function FirstAac({navigation}) {
                                     <Pressable 
                                     onPress={() => {
                                             updateData(item.page, 'visibility', 1, 'ID', item.ID)
-                                            getPageData('firstAac');                     
+                                            getPageData('Main');                     
+                                    }}
+                                    onLongPress={() => {
+                                        setButtonText(item.text)
+                                        setButtonImg(item.image)
+                                        setButtonId(item.ID)
+                                        setButtonColour(item.colour)
+                                        setPage(item.page)
+                                        setButtonModal(true)
                                     }}
                                     android_disableSound={true}
                                     style={[
+                                        {backgroundColor: item.colour},
                                         {width: screenWidth / 7},
                                         styles.aac_list
                                         ]}>
@@ -313,7 +423,7 @@ export default function FirstAac({navigation}) {
                                             {item.text}
                                         </Text>
                                         <Image 
-                                        source={{uri: item.text + 'img'}}
+                                        source={{uri: item.image}}
                                         style={styles.image}
                                         />
                                         <View style={styles.edit_check}>
@@ -351,6 +461,7 @@ export default function FirstAac({navigation}) {
                                     }}
                                     android_disableSound={true}
                                     style={[
+                                        {backgroundColor: item.colour},
                                         {width: screenWidth / 7},
                                         styles.aac_list
                                         ]}>
@@ -358,7 +469,7 @@ export default function FirstAac({navigation}) {
                                             {item.text}
                                         </Text>
                                         <Image 
-                                        source={{uri: item.text + 'img'}}
+                                        source={{uri: item.image}}
                                         style={styles.image}
                                         />
                                     </Pressable>
@@ -380,10 +491,19 @@ export default function FirstAac({navigation}) {
                                     <Pressable 
                                     onPress={() => {
                                             updateData(item.page, 'visibility', 0, 'ID', item.ID)
-                                            getPageData('firstAac');                     
+                                            getPageData('Main');                     
+                                    }}
+                                    onLongPress={() => {
+                                        setButtonText(item.text)
+                                        setButtonImg(item.image)
+                                        setButtonId(item.ID)
+                                        setButtonColour(item.colour)
+                                        setPage(item.page)
+                                        setButtonModal(true)
                                     }}
                                     android_disableSound={true}
                                     style={[
+                                        {backgroundColor: item.colour},
                                         {width: screenWidth / 7},
                                         styles.aac_list
                                         ]}>
@@ -392,7 +512,7 @@ export default function FirstAac({navigation}) {
                                             {item.text}
                                         </Text>
                                         <Image 
-                                        source={{uri: item.text + 'img'}}
+                                        source={{uri: item.image}}
                                         style={styles.image}
                                         />
                                         <View style={styles.edit_check}>
@@ -409,10 +529,19 @@ export default function FirstAac({navigation}) {
                                     <Pressable 
                                     onPress={() => {
                                             updateData(item.page, 'visibility', 1, 'ID', item.ID)
-                                            getPageData('firstAac');                     
+                                            getPageData('Main');                     
+                                    }}
+                                    onLongPress={() => {
+                                        setButtonText(item.text)
+                                        setButtonImg(item.image)
+                                        setButtonId(item.ID)
+                                        setButtonColour(item.colour)
+                                        setPage(item.page)
+                                        setButtonModal(true)
                                     }}
                                     android_disableSound={true}
                                     style={[
+                                        {backgroundColor: item.colour},
                                         {width: screenWidth / 7},
                                         styles.aac_list
                                         ]}>
@@ -421,7 +550,7 @@ export default function FirstAac({navigation}) {
                                             {item.text}
                                         </Text>
                                         <Image 
-                                        source={{uri: item.text + 'img'}}
+                                        source={{uri: item.image}}
                                         style={styles.image}
                                         />
                                         <View style={styles.edit_check}>
@@ -455,6 +584,7 @@ export default function FirstAac({navigation}) {
                                     }}
                                     android_disableSound={true}
                                     style={[
+                                        {backgroundColor: item.colour},
                                         {width: screenWidth / 7},
                                         styles.aac_list
                                         ]}>
@@ -462,7 +592,7 @@ export default function FirstAac({navigation}) {
                                             {item.text}
                                         </Text>
                                         <Image 
-                                        source={{uri: item.text + 'img'}}
+                                        source={{uri: item.image}}
                                         style={styles.image}
                                         />
                                     </Pressable>
@@ -484,10 +614,19 @@ export default function FirstAac({navigation}) {
                                     <Pressable 
                                     onPress={() => {
                                             updateData(item.page, 'visibility', 0, 'ID', item.ID)
-                                            getPageData('firstAac');                     
+                                            getPageData('Main');                     
+                                    }}
+                                    onLongPress={() => {
+                                        setButtonText(item.text)
+                                        setButtonImg(item.image)
+                                        setButtonId(item.ID)
+                                        setButtonColour(item.colour)
+                                        setPage(item.page)
+                                        setButtonModal(true)
                                     }}
                                     android_disableSound={true}
                                     style={[
+                                        {backgroundColor: item.colour},
                                         {width: screenWidth / 7},
                                         styles.aac_list
                                         ]}>
@@ -496,7 +635,7 @@ export default function FirstAac({navigation}) {
                                             {item.text}
                                         </Text>
                                         <Image 
-                                        source={{uri: item.text + 'img'}}
+                                        source={{uri: item.image}}
                                         style={styles.image}
                                         />
                                         <View style={styles.edit_check}>
@@ -513,10 +652,19 @@ export default function FirstAac({navigation}) {
                                     <Pressable 
                                     onPress={() => {
                                             updateData(item.page, 'visibility', 1, 'ID', item.ID)
-                                            getPageData('firstAac');                     
+                                            getPageData('Main');                     
+                                    }}
+                                    onLongPress={() => {
+                                        setButtonText(item.text)
+                                        setButtonImg(item.image)
+                                        setButtonId(item.ID)
+                                        setButtonColour(item.colour)
+                                        setPage(item.page)
+                                        setButtonModal(true)
                                     }}
                                     android_disableSound={true}
                                     style={[
+                                        {backgroundColor: item.colour},
                                         {width: screenWidth / 7},
                                         styles.aac_list
                                         ]}>
@@ -525,7 +673,7 @@ export default function FirstAac({navigation}) {
                                             {item.text}
                                         </Text>
                                         <Image 
-                                        source={{uri: item.text + 'img'}}
+                                        source={{uri: item.image}}
                                         style={styles.image}
                                         />
                                         <View style={styles.edit_check}>
@@ -559,6 +707,7 @@ export default function FirstAac({navigation}) {
                                     }}
                                     android_disableSound={true}
                                     style={[
+                                        {backgroundColor: item.colour},
                                         {width: screenWidth / 7},
                                         styles.aac_list
                                         ]}>
@@ -566,7 +715,7 @@ export default function FirstAac({navigation}) {
                                             {item.text}
                                         </Text>
                                         <Image 
-                                        source={{uri: item.text + 'img'}}
+                                        source={{uri: item.image}}
                                         style={styles.image}
                                         />
                                     </Pressable>
@@ -588,10 +737,19 @@ export default function FirstAac({navigation}) {
                                     <Pressable 
                                     onPress={() => {
                                             updateData(item.page, 'visibility', 0, 'ID', item.ID)
-                                            getPageData('firstAac');                     
+                                            getPageData('Main');                     
+                                    }}
+                                    onLongPress={() => {
+                                        setButtonText(item.text)
+                                        setButtonImg(item.image)
+                                        setButtonId(item.ID)
+                                        setButtonColour(item.colour)
+                                        setPage(item.page)
+                                        setButtonModal(true)
                                     }}
                                     android_disableSound={true}
                                     style={[
+                                        {backgroundColor: item.colour},
                                         {width: screenWidth / 7},
                                         styles.aac_list
                                         ]}>
@@ -600,7 +758,7 @@ export default function FirstAac({navigation}) {
                                             {item.text}
                                         </Text>
                                         <Image 
-                                        source={{uri: item.text + 'img'}}
+                                        source={{uri: item.image}}
                                         style={styles.image}
                                         />
                                         <View style={styles.edit_check}>
@@ -617,10 +775,19 @@ export default function FirstAac({navigation}) {
                                     <Pressable 
                                     onPress={() => {
                                             updateData(item.page, 'visibility', 1, 'ID', item.ID)
-                                            getPageData('firstAac');                     
+                                            getPageData('Main');                     
+                                    }}
+                                    onLongPress={() => {
+                                        setButtonText(item.text)
+                                        setButtonImg(item.image)
+                                        setButtonId(item.ID)
+                                        setButtonColour(item.colour)
+                                        setPage(item.page)
+                                        setButtonModal(true)
                                     }}
                                     android_disableSound={true}
                                     style={[
+                                        {backgroundColor: item.colour},
                                         {width: screenWidth / 7},
                                         styles.aac_list
                                         ]}>
@@ -629,7 +796,7 @@ export default function FirstAac({navigation}) {
                                             {item.text}
                                         </Text>
                                         <Image 
-                                        source={{uri: item.text + 'img'}}
+                                        source={{uri: item.image}}
                                         style={styles.image}
                                         />
                                         <View style={styles.edit_check}>
@@ -663,6 +830,7 @@ export default function FirstAac({navigation}) {
                                     }}
                                     android_disableSound={true}
                                     style={[
+                                        {backgroundColor: item.colour},
                                         {width: screenWidth / 7},
                                         styles.aac_list
                                         ]}>
@@ -670,7 +838,7 @@ export default function FirstAac({navigation}) {
                                             {item.text}
                                         </Text>
                                         <Image 
-                                        source={{uri: item.text + 'img'}}
+                                        source={{uri: item.image}}
                                         style={styles.image}
                                         />
                                     </Pressable>
@@ -692,10 +860,19 @@ export default function FirstAac({navigation}) {
                                     <Pressable 
                                     onPress={() => {
                                             updateData(item.page, 'visibility', 0, 'ID', item.ID)
-                                            getPageData('firstAac');                     
+                                            getPageData('Main');                     
+                                    }}
+                                    onLongPress={() => {
+                                        setButtonText(item.text)
+                                        setButtonImg(item.image)
+                                        setButtonId(item.ID)
+                                        setButtonColour(item.colour)
+                                        setPage(item.page)
+                                        setButtonModal(true)
                                     }}
                                     android_disableSound={true}
                                     style={[
+                                        {backgroundColor: item.colour},
                                         {width: screenWidth / 7},
                                         styles.aac_list
                                         ]}>
@@ -704,7 +881,7 @@ export default function FirstAac({navigation}) {
                                             {item.text}
                                         </Text>
                                         <Image 
-                                        source={{uri: item.text + 'img'}}
+                                        source={{uri: item.image}}
                                         style={styles.image}
                                         />
                                         <View style={styles.edit_check}>
@@ -721,10 +898,19 @@ export default function FirstAac({navigation}) {
                                     <Pressable 
                                     onPress={() => {
                                             updateData(item.page, 'visibility', 1, 'ID', item.ID)
-                                            getPageData('firstAac');                     
+                                            getPageData('Main');                     
+                                    }}
+                                    onLongPress={() => {
+                                        setButtonText(item.text)
+                                        setButtonImg(item.image)
+                                        setButtonId(item.ID)
+                                        setButtonColour(item.colour)
+                                        setPage(item.page)
+                                        setButtonModal(true)
                                     }}
                                     android_disableSound={true}
                                     style={[
+                                        {backgroundColor: item.colour},
                                         {width: screenWidth / 7},
                                         styles.aac_list
                                         ]}>
@@ -733,7 +919,7 @@ export default function FirstAac({navigation}) {
                                             {item.text}
                                         </Text>
                                         <Image 
-                                        source={{uri: item.text + 'img'}}
+                                        source={{uri: item.image}}
                                         style={styles.image}
                                         />
                                         <View style={styles.edit_check}>
@@ -767,6 +953,7 @@ export default function FirstAac({navigation}) {
                                     }}
                                     android_disableSound={true}
                                     style={[
+                                        {backgroundColor: item.colour},
                                         {width: screenWidth / 7},
                                         styles.aac_list
                                         ]}>
@@ -774,7 +961,7 @@ export default function FirstAac({navigation}) {
                                             {item.text}
                                         </Text>
                                         <Image 
-                                        source={{uri: item.text + 'img'}}
+                                        source={{uri: item.image}}
                                         style={styles.image}
                                         />
                                     </Pressable>
@@ -796,10 +983,19 @@ export default function FirstAac({navigation}) {
                                     <Pressable 
                                     onPress={() => {
                                             updateData(item.page, 'visibility', 0, 'ID', item.ID)
-                                            getPageData('firstAac');                     
+                                            getPageData('Main');                     
+                                    }}
+                                    onLongPress={() => {
+                                        setButtonText(item.text)
+                                        setButtonImg(item.image)
+                                        setButtonId(item.ID)
+                                        setButtonColour(item.colour)
+                                        setPage(item.page)
+                                        setButtonModal(true)
                                     }}
                                     android_disableSound={true}
                                     style={[
+                                        {backgroundColor: item.colour},
                                         {width: screenWidth / 7},
                                         styles.aac_list
                                         ]}>
@@ -808,7 +1004,7 @@ export default function FirstAac({navigation}) {
                                             {item.text}
                                         </Text>
                                         <Image 
-                                        source={{uri: item.text + 'img'}}
+                                        source={{uri: item.image}}
                                         style={styles.image}
                                         />
                                         <View style={styles.edit_check}>
@@ -825,10 +1021,19 @@ export default function FirstAac({navigation}) {
                                     <Pressable 
                                     onPress={() => {
                                             updateData(item.page, 'visibility', 1, 'ID', item.ID)
-                                            getPageData('firstAac');                     
+                                            getPageData('Main');                     
+                                    }}
+                                    onLongPress={() => {
+                                        setButtonText(item.text)
+                                        setButtonImg(item.image)
+                                        setButtonId(item.ID)
+                                        setButtonColour(item.colour)
+                                        setPage(item.page)
+                                        setButtonModal(true)
                                     }}
                                     android_disableSound={true}
                                     style={[
+                                        {backgroundColor: item.colour},
                                         {width: screenWidth / 7},
                                         styles.aac_list
                                         ]}>
@@ -837,7 +1042,7 @@ export default function FirstAac({navigation}) {
                                             {item.text}
                                         </Text>
                                         <Image 
-                                        source={{uri: item.text + 'img'}}
+                                        source={{uri: item.image}}
                                         style={styles.image}
                                         />
                                         <View style={styles.edit_check}>
@@ -872,6 +1077,7 @@ export default function FirstAac({navigation}) {
                                     }}
                                     android_disableSound={true}
                                     style={[
+                                        {backgroundColor: item.colour},
                                         {width: screenWidth / 7},
                                         styles.aac_list
                                         ]}>
@@ -879,7 +1085,7 @@ export default function FirstAac({navigation}) {
                                             {item.text}
                                         </Text>
                                         <Image 
-                                        source={{uri: item.text + 'img'}}
+                                        source={{uri: item.image}}
                                         style={styles.image}
                                         />
                                     </Pressable>
@@ -901,10 +1107,19 @@ export default function FirstAac({navigation}) {
                                     <Pressable 
                                     onPress={() => {
                                             updateData(item.page, 'visibility', 0, 'ID', item.ID)
-                                            getPageData('firstAac');                     
+                                            getPageData('Main');                     
+                                    }}
+                                    onLongPress={() => {
+                                        setButtonText(item.text)
+                                        setButtonImg(item.image)
+                                        setButtonId(item.ID)
+                                        setButtonColour(item.colour)
+                                        setPage(item.page)
+                                        setButtonModal(true)
                                     }}
                                     android_disableSound={true}
                                     style={[
+                                        {backgroundColor: item.colour},
                                         {width: screenWidth / 7},
                                         styles.aac_list
                                         ]}>
@@ -913,7 +1128,7 @@ export default function FirstAac({navigation}) {
                                             {item.text}
                                         </Text>
                                         <Image 
-                                        source={{uri: item.text + 'img'}}
+                                        source={{uri: item.image}}
                                         style={styles.image}
                                         />
                                         <View style={styles.edit_check}>
@@ -930,10 +1145,19 @@ export default function FirstAac({navigation}) {
                                     <Pressable 
                                     onPress={() => {
                                             updateData(item.page, 'visibility', 1, 'ID', item.ID)
-                                            getPageData('firstAac');                     
+                                            getPageData('Main');                     
+                                    }}
+                                    onLongPress={() => {
+                                        setButtonText(item.text)
+                                        setButtonImg(item.image)
+                                        setButtonId(item.ID)
+                                        setButtonColour(item.colour)
+                                        setPage(item.page)
+                                        setButtonModal(true)
                                     }}
                                     android_disableSound={true}
                                     style={[
+                                        {backgroundColor: item.colour},
                                         {width: screenWidth / 7},
                                         styles.aac_list
                                         ]}>
@@ -942,7 +1166,7 @@ export default function FirstAac({navigation}) {
                                             {item.text}
                                         </Text>
                                         <Image 
-                                        source={{uri: item.text + 'img'}}
+                                        source={{uri: item.image}}
                                         style={styles.image}
                                         />
                                         <View style={styles.edit_check}>
@@ -1047,5 +1271,75 @@ const styles = StyleSheet.create({
         position: 'absolute',
         left: '70%',
         bottom: '40%'
+    },
+    centered_view: {
+        flex: 1,
+        backgroundColor: 'rgba(27,33,39,0.9)',
+        justifyContent: 'center',
+        alignItems: 'center'
+    },
+    modal_text: {
+        color: '#fff',
+        fontSize: Dimensions.get('window').width / 30,
+    },
+    modal_input: {
+        width: Dimensions.get('window').width / 4,
+        backgroundColor: '#fff',
+        color: '#000000',
+        justifyContent: 'center',
+        textAlign: 'center',
+        borderColor: '#000000',
+        borderRadius: 5,
+        margin: 20
+    },
+    modal_image :{
+        width: Dimensions.get('window').width / 10,
+        height: Dimensions.get('window').width / 10,
+        resizeMode: 'contain',
+        margin: 30
+    },
+    color_white: {
+        flex: 1,
+        backgroundColor: '#fff',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderTopLeftRadius: 10,
+        borderBottomLeftRadius: 10
+    },
+    color_red: {
+        flex: 1,
+        backgroundColor: '#f797ac',
+        justifyContent: 'center',
+        alignItems: 'center'
+    },
+    color_blue: {
+        flex: 1,
+        backgroundColor: '#a3acf7',
+        justifyContent: 'center',
+        alignItems: 'center'
+    },
+    color_yellow: {
+        flex: 1,
+        backgroundColor: '#f0f7a3',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderTopRightRadius: 10,
+        borderBottomRightRadius: 10
+    },
+    color_bar: {
+        flexDirection: 'row',
+        height: Dimensions.get('window').height / 14,
+        width: Dimensions.get('window').width / 2,
+        marginTop: 20
+    },
+    modal_cancel: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center'
+    },
+    modal_submit: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center'
     }
 })
