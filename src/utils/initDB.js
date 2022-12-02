@@ -1,6 +1,4 @@
 import SQLite from 'react-native-sqlite-storage';
-import { useSelector, useDispatch } from 'react-redux';
-import { addWords, removeWord, removeAllWords, setPageData, setPageName, setEdit, setTalking, setPageLoading} from "../redux/actions";
 
 const db = SQLite.openDatabase(
     {

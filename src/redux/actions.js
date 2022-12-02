@@ -5,7 +5,9 @@ export const SET_PAGE_DATA = 'SET_PAGE_DATA';
 export const SET_PAGE_NAME = 'SET_PAGE_NAME';
 export const SET_EDIT = 'SET_EDIT';
 export const SET_TALKING = 'SET_TALKING';
-export const SET_PAGE_LOADING = 'SET_PAGE_LOADING'
+export const SET_PAGE_LOADING = 'SET_PAGE_LOADING';
+export const SET_IMAGE_PATH = 'SET_IMAGE_PATH';
+export const SET_IMAGE_DONE = 'SET_IMAGE_DONE';
 
 export const addWords = word => dispatch => {
     dispatch({
@@ -62,4 +64,19 @@ export const setPageLoading = loading => dispatch => {
         payload: loading
     })
 }
+
+export const setImagePath = path => dispatch => {
+    dispatch({
+        type: SET_IMAGE_PATH,
+        payload: path
+    })
+}
+
+export const setImageDone = done => dispatch => {
+    dispatch({
+        type: SET_IMAGE_DONE,
+        payload: done
+    })
+}
+
 

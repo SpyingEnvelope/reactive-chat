@@ -40,6 +40,8 @@ export const updateMultiColumns = (page, text, colour, image, id) => {
                 + "'" + text + "'"
                 + ", colour = "
                 + "'" + colour + "'"
+                + ", image = "
+                + "'" + image + "'"
                 + " WHERE ID = " + id,
                 [],
                 (tx, results) => {

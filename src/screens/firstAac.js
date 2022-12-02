@@ -13,8 +13,9 @@ import {
     TextInput
 } from 'react-native';
 import SQLite from 'react-native-sqlite-storage';
+import RNFS from 'react-native-fs'
 import { useSelector, useDispatch } from 'react-redux';
-import { addWords, removeWord, removeAllWords, setPageData, setPageName, setEdit, setTalking} from "../redux/actions";
+import { addWords, removeWord, removeAllWords, setPageData, setPageName, setEdit, setTalking, setImagePath, setImageDone} from "../redux/actions";
 import initRowsAndTables from "../utils/initDB";
 import { initFirstAAC } from "../utils/initDB";
 import { dropTable } from "../utils/initDB";
@@ -38,7 +39,7 @@ export default function FirstAac({navigation}) {
 
     LogBox.ignoreLogs(['new NativeEventEmitter'])
 
-    const { words, pageName, pageData, talking, edit} = useSelector(state => state.wordsReducer);
+    const { words, pageName, pageData, talking, edit, imgPath, imageDone} = useSelector(state => state.wordsReducer);
     const dispatch = useDispatch();
 
     
@@ -82,11 +83,24 @@ export default function FirstAac({navigation}) {
         })
     }
 
+    const getFileContent = async (path) => {
+        const reader = await RNFS.readDir(path)
+        console.log(reader)
+    }
+
     useEffect(() => {
         Tts.addEventListener('tts-start', () => dispatch(setTalking(true)))
         Tts.addEventListener('tts-finish', () => dispatch(setTalking(false)))
         Tts.setDucking(true)
     }, [])
+
+    useEffect(() => {
+        if (imageDone) {
+            setButtonImg(imgPath)
+            dispatch(setImageDone(false))
+            setButtonModal(true)
+        }    
+    }, [imageDone])
 
     const readAllWords = () => {
         if (talking == true) {
@@ -115,6 +129,7 @@ export default function FirstAac({navigation}) {
                 onRequestClose={() => setButtonModal(false)}
                 animationType='slide'
                 hardwareAccelerated
+
             >
                 <View style={styles.centered_view}>
                     <Text style={styles.modal_text}>Text to display</Text>  
@@ -125,10 +140,22 @@ export default function FirstAac({navigation}) {
                         onChangeText={(value) => setButtonText(value)}
                     >
                     </TextInput>
-                    <Image 
-                        source={{uri: buttonImg}}
-                        style={styles.modal_image}
-                    />
+                    <Text style={[
+                        {marginBottom: 10},
+                        styles.modal_text
+                        ]}>Image</Text>
+                    <TouchableOpacity
+                        onPress={() => {
+                            setButtonModal(false)
+                            navigation.navigate('Images')
+                        }}
+                        style={styles.modal_image_button}
+                    >
+                        <Image 
+                            source={{uri: buttonImg}}
+                            style={styles.modal_image}
+                        />
+                    </TouchableOpacity>
                     <Text style={styles.modal_text}>Background Colour</Text>  
                     <View style={styles.color_bar}>
                         <TouchableOpacity
@@ -1274,9 +1301,12 @@ const styles = StyleSheet.create({
     },
     centered_view: {
         flex: 1,
+        width: Dimensions.get('window').width,
+        height: Dimensions.get('window').height,
         backgroundColor: 'rgba(27,33,39,0.9)',
         justifyContent: 'center',
-        alignItems: 'center'
+        alignItems: 'center',
+        position: 'absolute'
     },
     modal_text: {
         color: '#fff',
@@ -1290,7 +1320,7 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         borderColor: '#000000',
         borderRadius: 5,
-        margin: 20
+        margin: 10
     },
     modal_image :{
         width: Dimensions.get('window').width / 10,
@@ -1341,5 +1371,19 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center'
+    },
+    change_image: {
+        color: '#fff',
+        fontSize: Dimensions.get('window').width / 50,
+        marginBottom: 10
+    },
+    modal_image_button: {
+        width: Dimensions.get('window').width / 5,
+        height: Dimensions.get('window').height / 3.5,
+        backgroundColor: '#1b2127',
+        alignItems: 'center',
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: '#fff'
     }
 })
