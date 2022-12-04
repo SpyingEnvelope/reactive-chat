@@ -10,18 +10,19 @@ import {
     Image,
     LogBox,
     Modal,
-    TextInput
+    TextInput,
+    Switch,
+    ScrollView
 } from 'react-native';
 import SQLite from 'react-native-sqlite-storage';
 import RNFS from 'react-native-fs'
 import { useSelector, useDispatch } from 'react-redux';
-import { addWords, removeWord, removeAllWords, setPageData, setPageName, setEdit, setTalking, setImagePath, setImageDone} from "../redux/actions";
+import { addWords, removeWord, removeAllWords, setPageData, setPageName, setEdit, setTalking, setImagePath, setImageDone, setScreenHeight, setScreenWidth, addPageName, removePageName, setGoHome} from "../redux/actions";
 import initRowsAndTables from "../utils/initDB";
 import { initFirstAAC } from "../utils/initDB";
-import { dropTable } from "../utils/initDB";
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import Tts from 'react-native-tts';
-import { updateData, updateMultiColumns } from "../utils/sql_fucntions";
+import { updateData, updateMultiColumns, initTable, dropTable, initAddItemsToTable } from "../utils/sql_fucntions";
 
 const db = SQLite.openDatabase(
     {
@@ -39,31 +40,55 @@ export default function FirstAac({navigation}) {
 
     LogBox.ignoreLogs(['new NativeEventEmitter'])
 
-    const { words, pageName, pageData, talking, edit, imgPath, imageDone} = useSelector(state => state.wordsReducer);
+    const { words, pageName, pageData, talking, edit, imgPath, imageDone, screenWidth, screenHeight, pageHist} = useSelector(state => state.wordsReducer);
     const dispatch = useDispatch();
 
     
-    const [buttonModal, setButtonModal] = useState(false)
-    const [buttonText, setButtonText] = useState('')
-    const [buttonImg, setButtonImg] = useState('')
-    const [buttonColour, setButtonColour] = useState('')
-    const [buttonId, setButtonId] = useState(0)
+    const [buttonModal, setButtonModal] = useState(false);
+    const [buttonText, setButtonText] = useState('');
+    const [buttonImg, setButtonImg] = useState('');
+    const [buttonColour, setButtonColour] = useState('');
+    const [buttonId, setButtonId] = useState(0);
+    const [buttonType, setButtonType] = useState('')
+    const [initType, setInitType] = useState('')
+    const [initText, setInitText] = useState('')
     const [page, setPage] = useState('');
 
+    const [loadingTable, setLoadingTable] = useState(false)
+
+    const [tableDataCounter, setTableDataCounter] = useState(true);
+    const [deletePage, setDeletePage] = useState(false)
+
     function getPageData(page) {
+        const newPage = page.replace(/\s/g, '')
         try{
             db.transaction((tx) => {
                 tx.executeSql(
-                    "SELECT * FROM " + page,
+                    "SELECT * FROM " + newPage,
                     [],
                     (tx, results) => {
-                        console.log('found table ' + page)
+                        console.log('found table ' + newPage)
+                        setTableDataCounter(true)
                         dispatch(setPageData(results.rows.raw()))
-                        dispatch(setPageName(page))
+                        dispatch(setPageName(newPage))
+                        if (newPage != pageHist[pageHist.length - 2]) {
+                            dispatch(addPageName(newPage))
+                        }
                         return false
                     },
                     (tx, error) => {
                         console.log(tx)
+                        if (tx.code == 0 && tableDataCounter) {
+                            console.log('initiating table ' + newPage)
+                            setLoadingTable(true)
+                            initTable(newPage)
+                            initAddItemsToTable(newPage)
+                            setLoadingTable(false)
+                            getPageData(newPage)
+                            setTableDataCounter(false)
+                        } else {
+                            setTableDataCounter(true)
+                        }
                         return true
                     }
                 )
@@ -92,6 +117,8 @@ export default function FirstAac({navigation}) {
         Tts.addEventListener('tts-start', () => dispatch(setTalking(true)))
         Tts.addEventListener('tts-finish', () => dispatch(setTalking(false)))
         Tts.setDucking(true)
+        dispatch(setScreenWidth(Dimensions.get('window').width))
+        dispatch(setScreenHeight(Dimensions.get('window').height))
     }, [])
 
     useEffect(() => {
@@ -119,10 +146,18 @@ export default function FirstAac({navigation}) {
     }
 
     const topFlatList = useRef(null)
-    const screenWidth = Dimensions.get('window').width
 
     return(
         <View style={styles.body}>
+            <Modal
+                visible={loadingTable}
+                transparent
+                animationType='fade'
+            >
+                <View style={styles.centered_view}>
+
+                </View>
+            </Modal>
             <Modal
                 visible={buttonModal}
                 transparent
@@ -132,14 +167,42 @@ export default function FirstAac({navigation}) {
 
             >
                 <View style={styles.centered_view}>
-                    <Text style={styles.modal_text}>Text to display</Text>  
-                    <TextInput 
-                        style={styles.modal_input}
-                        value={buttonText}
-                        placeholder='Text for button'
-                        onChangeText={(value) => setButtonText(value)}
-                    >
-                    </TextInput>
+                        <Text style={styles.modal_text}>Text to display</Text>  
+                        {initType == 'page' ? 
+                        <Text style={styles.modal_warning_text}>Note! Changing page name will delete page data</Text>
+                        : null}
+                        <TextInput 
+                            style={styles.modal_input}
+                            value={buttonText}
+                            placeholder='Text for button'
+                            onChangeText={(value) => setButtonText(value)}
+                        >
+                        </TextInput>
+                        <Text style={styles.modal_text}>Is this a page?</Text>
+                        <Switch 
+                        trackColor={{false: "#767577", true: "#81b0ff"}}
+                        value={buttonType == 'page' ? true : false}
+                        onValueChange={() => {
+                            if (buttonType == 'page') {
+                                setButtonType('text')
+                            } else {
+                                setButtonType('page')
+                            }
+                        }}
+                        />
+                        {buttonType == 'page' ? null :
+                            initType == 'page' ? 
+                                <View>
+                                    <Text style={styles.modal_text}>Do you want to delete page data?</Text>
+                                    <Switch 
+                                        trackColor={{false: "#767577", true: "#81b0ff"}}
+                                        value={deletePage}
+                                        onValueChange={() => setDeletePage(!deletePage)}
+                                    />
+                                </View>
+                            : null}
+                            
+
                     <Text style={[
                         {marginBottom: 10},
                         styles.modal_text
@@ -225,8 +288,12 @@ export default function FirstAac({navigation}) {
                         </TouchableOpacity>
                         <TouchableOpacity 
                             onPress={() => {
-                                updateMultiColumns(page, buttonText, buttonColour, buttonImg, buttonId)
-                                getPageData('Main')
+                                if (deletePage) {
+                                    dropTable(buttonText)
+                                    setDeletePage(false)
+                                }
+                                updateMultiColumns(page, buttonText, buttonColour, buttonImg, buttonType, buttonId)
+                                getPageData(pageName)
                                 setButtonModal(false)
                             }}
                             style={styles.modal_submit}
@@ -313,7 +380,9 @@ export default function FirstAac({navigation}) {
                     </View>
                     :                     
                     <View style={styles.gray_rect_dimensions}>
-                        <Pressable>
+                        <Pressable
+                            onPress={() => console.log(pageHist)}
+                        >
                             <FontAwesome5 
                                 name={'home'}
                                 size={screenWidth / 60}
@@ -321,7 +390,18 @@ export default function FirstAac({navigation}) {
                                 style={styles.back_button}
                             />
                         </Pressable>
-                        <Pressable>
+                        <Pressable
+                            onPress={() => {
+                                console.log(pageHist)
+                                if (pageHist.length == 1) {
+                                    dispatch(setGoHome('Main'))
+                                    getPageData('Main')
+                                } else {
+                                    dispatch(removePageName('Main'))
+                                    getPageData(pageHist[pageHist.length - 2])
+                                }
+                            }}
+                        >
                             <FontAwesome5 
                                 name={'arrow-left'}
                                 size={screenWidth / 60}
@@ -358,6 +438,9 @@ export default function FirstAac({navigation}) {
                                     onPress={() => {
                                         speakFunction(item.text)
                                         dispatch(addWords({text: item.text, image: item.image}))
+                                        if (item.type == 'page') {
+                                            getPageData(item.text)
+                                        }
                                     }}
                                     android_disableSound={true}
                                     style={[
@@ -391,14 +474,17 @@ export default function FirstAac({navigation}) {
                                     <Pressable 
                                     onPress={() => {
                                             updateData(item.page, 'visibility', 0, 'ID', item.ID)
-                                            getPageData('Main');                     
+                                            getPageData(pageName);                     
                                     }}
                                     onLongPress={() => {
                                         setButtonText(item.text)
+                                        setInitText(item.text)
                                         setButtonImg(item.image)
                                         setButtonId(item.ID)
                                         setButtonColour(item.colour)
                                         setPage(item.page)
+                                        setButtonType(item.type)
+                                        setInitType(item.type)
                                         setButtonModal(true)
                                     }}
                                     android_disableSound={true}
@@ -418,7 +504,7 @@ export default function FirstAac({navigation}) {
                                         <View style={styles.edit_check}>
                                             <FontAwesome5 
                                                 name={'check'}
-                                                size={Dimensions.get('window').width / 40}
+                                                size={screenWidth / 40}
                                                 color={item.visibility ? '#558B2F' : '#000'}
                                             />
                                         </View>
@@ -429,14 +515,17 @@ export default function FirstAac({navigation}) {
                                     <Pressable 
                                     onPress={() => {
                                             updateData(item.page, 'visibility', 1, 'ID', item.ID)
-                                            getPageData('Main');                     
+                                            getPageData(pageName);                     
                                     }}
                                     onLongPress={() => {
                                         setButtonText(item.text)
+                                        setInitText(item.text)
                                         setButtonImg(item.image)
                                         setButtonId(item.ID)
                                         setButtonColour(item.colour)
                                         setPage(item.page)
+                                        setButtonType(item.type)
+                                        setInitType(item.type)
                                         setButtonModal(true)
                                     }}
                                     android_disableSound={true}
@@ -456,7 +545,7 @@ export default function FirstAac({navigation}) {
                                         <View style={styles.edit_check}>
                                             <FontAwesome5 
                                                 name={'check'}
-                                                size={Dimensions.get('window').width / 40}
+                                                size={screenWidth / 40}
                                                 color={item.visibility ? '#558B2F' : '#000'}
                                             />
                                         </View>
@@ -518,14 +607,17 @@ export default function FirstAac({navigation}) {
                                     <Pressable 
                                     onPress={() => {
                                             updateData(item.page, 'visibility', 0, 'ID', item.ID)
-                                            getPageData('Main');                     
+                                            getPageData(pageName);                     
                                     }}
                                     onLongPress={() => {
                                         setButtonText(item.text)
+                                        setInitText(item.text)
                                         setButtonImg(item.image)
                                         setButtonId(item.ID)
                                         setButtonColour(item.colour)
                                         setPage(item.page)
+                                        setButtonType(item.type)
+                                        setInitType(item.type)
                                         setButtonModal(true)
                                     }}
                                     android_disableSound={true}
@@ -545,7 +637,7 @@ export default function FirstAac({navigation}) {
                                         <View style={styles.edit_check}>
                                             <FontAwesome5 
                                                 name={'check'}
-                                                size={Dimensions.get('window').width / 40}
+                                                size={screenWidth / 40}
                                                 color={item.visibility ? '#558B2F' : '#000'}
                                             />
                                         </View>
@@ -556,14 +648,17 @@ export default function FirstAac({navigation}) {
                                     <Pressable 
                                     onPress={() => {
                                             updateData(item.page, 'visibility', 1, 'ID', item.ID)
-                                            getPageData('Main');                     
+                                            getPageData(pageName);                     
                                     }}
                                     onLongPress={() => {
                                         setButtonText(item.text)
+                                        setInitText(item.text)
                                         setButtonImg(item.image)
                                         setButtonId(item.ID)
                                         setButtonColour(item.colour)
                                         setPage(item.page)
+                                        setButtonType(item.type)
+                                        setInitType(item.type)
                                         setButtonModal(true)
                                     }}
                                     android_disableSound={true}
@@ -583,7 +678,7 @@ export default function FirstAac({navigation}) {
                                         <View style={styles.edit_check}>
                                             <FontAwesome5 
                                                 name={'check'}
-                                                size={Dimensions.get('window').width / 40}
+                                                size={screenWidth / 40}
                                                 color={item.visibility ? '#558B2F' : '#000'}
                                             />
                                         </View>
@@ -641,14 +736,17 @@ export default function FirstAac({navigation}) {
                                     <Pressable 
                                     onPress={() => {
                                             updateData(item.page, 'visibility', 0, 'ID', item.ID)
-                                            getPageData('Main');                     
+                                            getPageData(pageName);                     
                                     }}
                                     onLongPress={() => {
                                         setButtonText(item.text)
+                                        setInitText(item.text)
                                         setButtonImg(item.image)
                                         setButtonId(item.ID)
                                         setButtonColour(item.colour)
                                         setPage(item.page)
+                                        setButtonType(item.type)
+                                        setInitType(item.type)
                                         setButtonModal(true)
                                     }}
                                     android_disableSound={true}
@@ -668,7 +766,7 @@ export default function FirstAac({navigation}) {
                                         <View style={styles.edit_check}>
                                             <FontAwesome5 
                                                 name={'check'}
-                                                size={Dimensions.get('window').width / 40}
+                                                size={screenWidth / 40}
                                                 color={item.visibility ? '#558B2F' : '#000'}
                                             />
                                         </View>
@@ -679,14 +777,17 @@ export default function FirstAac({navigation}) {
                                     <Pressable 
                                     onPress={() => {
                                             updateData(item.page, 'visibility', 1, 'ID', item.ID)
-                                            getPageData('Main');                     
+                                            getPageData(pageName);                     
                                     }}
                                     onLongPress={() => {
                                         setButtonText(item.text)
+                                        setInitText(item.text)
                                         setButtonImg(item.image)
                                         setButtonId(item.ID)
                                         setButtonColour(item.colour)
                                         setPage(item.page)
+                                        setButtonType(item.type)
+                                        setInitType(item.type)
                                         setButtonModal(true)
                                     }}
                                     android_disableSound={true}
@@ -706,7 +807,7 @@ export default function FirstAac({navigation}) {
                                         <View style={styles.edit_check}>
                                             <FontAwesome5 
                                                 name={'check'}
-                                                size={Dimensions.get('window').width / 40}
+                                                size={screenWidth / 40}
                                                 color={item.visibility ? '#558B2F' : '#000'}
                                             />
                                         </View>
@@ -764,14 +865,17 @@ export default function FirstAac({navigation}) {
                                     <Pressable 
                                     onPress={() => {
                                             updateData(item.page, 'visibility', 0, 'ID', item.ID)
-                                            getPageData('Main');                     
+                                            getPageData(pageName);                     
                                     }}
                                     onLongPress={() => {
                                         setButtonText(item.text)
+                                        setInitText(item.text)
                                         setButtonImg(item.image)
                                         setButtonId(item.ID)
                                         setButtonColour(item.colour)
                                         setPage(item.page)
+                                        setButtonType(item.type)
+                                        setInitType(item.type)
                                         setButtonModal(true)
                                     }}
                                     android_disableSound={true}
@@ -791,7 +895,7 @@ export default function FirstAac({navigation}) {
                                         <View style={styles.edit_check}>
                                             <FontAwesome5 
                                                 name={'check'}
-                                                size={Dimensions.get('window').width / 40}
+                                                size={screenWidth / 40}
                                                 color={item.visibility ? '#558B2F' : '#000'}
                                             />
                                         </View>
@@ -802,14 +906,17 @@ export default function FirstAac({navigation}) {
                                     <Pressable 
                                     onPress={() => {
                                             updateData(item.page, 'visibility', 1, 'ID', item.ID)
-                                            getPageData('Main');                     
+                                            getPageData(pageName);                     
                                     }}
                                     onLongPress={() => {
                                         setButtonText(item.text)
+                                        setInitText(item.text)
                                         setButtonImg(item.image)
                                         setButtonId(item.ID)
                                         setButtonColour(item.colour)
                                         setPage(item.page)
+                                        setButtonType(item.type)
+                                        setInitType(item.type)
                                         setButtonModal(true)
                                     }}
                                     android_disableSound={true}
@@ -829,7 +936,7 @@ export default function FirstAac({navigation}) {
                                         <View style={styles.edit_check}>
                                             <FontAwesome5 
                                                 name={'check'}
-                                                size={Dimensions.get('window').width / 40}
+                                                size={screenWidth / 40}
                                                 color={item.visibility ? '#558B2F' : '#000'}
                                             />
                                         </View>
@@ -887,14 +994,17 @@ export default function FirstAac({navigation}) {
                                     <Pressable 
                                     onPress={() => {
                                             updateData(item.page, 'visibility', 0, 'ID', item.ID)
-                                            getPageData('Main');                     
+                                            getPageData(pageName);                     
                                     }}
                                     onLongPress={() => {
                                         setButtonText(item.text)
+                                        setInitText(item.text)
                                         setButtonImg(item.image)
                                         setButtonId(item.ID)
                                         setButtonColour(item.colour)
                                         setPage(item.page)
+                                        setButtonType(item.type)
+                                        setInitType(item.type)
                                         setButtonModal(true)
                                     }}
                                     android_disableSound={true}
@@ -914,7 +1024,7 @@ export default function FirstAac({navigation}) {
                                         <View style={styles.edit_check}>
                                             <FontAwesome5 
                                                 name={'check'}
-                                                size={Dimensions.get('window').width / 40}
+                                                size={screenWidth / 40}
                                                 color={item.visibility ? '#558B2F' : '#000'}
                                             />
                                         </View>
@@ -925,14 +1035,17 @@ export default function FirstAac({navigation}) {
                                     <Pressable 
                                     onPress={() => {
                                             updateData(item.page, 'visibility', 1, 'ID', item.ID)
-                                            getPageData('Main');                     
+                                            getPageData(pageName);                     
                                     }}
                                     onLongPress={() => {
                                         setButtonText(item.text)
+                                        setInitText(item.text)
                                         setButtonImg(item.image)
                                         setButtonId(item.ID)
                                         setButtonColour(item.colour)
                                         setPage(item.page)
+                                        setButtonType(item.type)
+                                        setInitType(item.type)
                                         setButtonModal(true)
                                     }}
                                     android_disableSound={true}
@@ -952,7 +1065,7 @@ export default function FirstAac({navigation}) {
                                         <View style={styles.edit_check}>
                                             <FontAwesome5 
                                                 name={'check'}
-                                                size={Dimensions.get('window').width / 40}
+                                                size={screenWidth / 40}
                                                 color={item.visibility ? '#558B2F' : '#000'}
                                             />
                                         </View>
@@ -1010,14 +1123,17 @@ export default function FirstAac({navigation}) {
                                     <Pressable 
                                     onPress={() => {
                                             updateData(item.page, 'visibility', 0, 'ID', item.ID)
-                                            getPageData('Main');                     
+                                            getPageData(pageName);                     
                                     }}
                                     onLongPress={() => {
                                         setButtonText(item.text)
+                                        setInitText(item.text)
                                         setButtonImg(item.image)
                                         setButtonId(item.ID)
                                         setButtonColour(item.colour)
                                         setPage(item.page)
+                                        setButtonType(item.type)
+                                        setInitType(item.type)
                                         setButtonModal(true)
                                     }}
                                     android_disableSound={true}
@@ -1037,7 +1153,7 @@ export default function FirstAac({navigation}) {
                                         <View style={styles.edit_check}>
                                             <FontAwesome5 
                                                 name={'check'}
-                                                size={Dimensions.get('window').width / 40}
+                                                size={screenWidth / 40}
                                                 color={item.visibility ? '#558B2F' : '#000'}
                                             />
                                         </View>
@@ -1048,14 +1164,17 @@ export default function FirstAac({navigation}) {
                                     <Pressable 
                                     onPress={() => {
                                             updateData(item.page, 'visibility', 1, 'ID', item.ID)
-                                            getPageData('Main');                     
+                                            getPageData(pageName);                     
                                     }}
                                     onLongPress={() => {
                                         setButtonText(item.text)
+                                        setInitText(item.text)
                                         setButtonImg(item.image)
                                         setButtonId(item.ID)
                                         setButtonColour(item.colour)
                                         setPage(item.page)
+                                        setButtonType(item.type)
+                                        setInitType(item.type)
                                         setButtonModal(true)
                                     }}
                                     android_disableSound={true}
@@ -1075,7 +1194,7 @@ export default function FirstAac({navigation}) {
                                         <View style={styles.edit_check}>
                                             <FontAwesome5 
                                                 name={'check'}
-                                                size={Dimensions.get('window').width / 40}
+                                                size={screenWidth / 40}
                                                 color={item.visibility ? '#558B2F' : '#000'}
                                             />
                                         </View>
@@ -1087,130 +1206,7 @@ export default function FirstAac({navigation}) {
                     }}
                 >
                 </FlatList>
-                <FlatList
-                    data={pageData.slice(42, 49)}
-                    horizontal={true}
-                    contentContainerStyle={{flex: 1, alignItems: "stretch"}}
-                    style={{backgroundColor: 'white'}}
-                    scrollEnabled={false}
-                    renderItem={ ({item}) => {
-                        if (edit == false) {
-                            if (item.visibility == 1) {
-                                return(
-                                    <Pressable 
-                                    onPress={() => {
-                                        speakFunction(item.text)
-                                        dispatch(addWords({text: item.text, image: item.image}))
-                                    }}
-                                    android_disableSound={true}
-                                    style={[
-                                        {backgroundColor: item.colour},
-                                        {width: screenWidth / 7},
-                                        styles.aac_list
-                                        ]}>
-                                        <Text style={styles.core_text}>
-                                            {item.text}
-                                        </Text>
-                                        <Image 
-                                        source={{uri: item.image}}
-                                        style={styles.image}
-                                        />
-                                    </Pressable>
-                                )
-                            } else {
-                                return(
-                                    <Pressable 
-                                    android_disableSound={true}
-                                    style={[
-                                        {width: screenWidth / 7},
-                                        styles.aac_list
-                                        ]}
-                                        />
-                                )
-                            }
-                        } else {
-                            if (item.visibility == 1) {
-                                return(
-                                    <Pressable 
-                                    onPress={() => {
-                                            updateData(item.page, 'visibility', 0, 'ID', item.ID)
-                                            getPageData('Main');                     
-                                    }}
-                                    onLongPress={() => {
-                                        setButtonText(item.text)
-                                        setButtonImg(item.image)
-                                        setButtonId(item.ID)
-                                        setButtonColour(item.colour)
-                                        setPage(item.page)
-                                        setButtonModal(true)
-                                    }}
-                                    android_disableSound={true}
-                                    style={[
-                                        {backgroundColor: item.colour},
-                                        {width: screenWidth / 7},
-                                        styles.aac_list
-                                        ]}>
 
-                                        <Text style={styles.core_text}>
-                                            {item.text}
-                                        </Text>
-                                        <Image 
-                                        source={{uri: item.image}}
-                                        style={styles.image}
-                                        />
-                                        <View style={styles.edit_check}>
-                                            <FontAwesome5 
-                                                name={'check'}
-                                                size={Dimensions.get('window').width / 40}
-                                                color={item.visibility ? '#558B2F' : '#000'}
-                                            />
-                                        </View>
-                                    </Pressable>
-                                )
-                            } else {
-                                return(
-                                    <Pressable 
-                                    onPress={() => {
-                                            updateData(item.page, 'visibility', 1, 'ID', item.ID)
-                                            getPageData('Main');                     
-                                    }}
-                                    onLongPress={() => {
-                                        setButtonText(item.text)
-                                        setButtonImg(item.image)
-                                        setButtonId(item.ID)
-                                        setButtonColour(item.colour)
-                                        setPage(item.page)
-                                        setButtonModal(true)
-                                    }}
-                                    android_disableSound={true}
-                                    style={[
-                                        {backgroundColor: item.colour},
-                                        {width: screenWidth / 7},
-                                        styles.aac_list
-                                        ]}>
-
-                                        <Text style={styles.core_text}>
-                                            {item.text}
-                                        </Text>
-                                        <Image 
-                                        source={{uri: item.image}}
-                                        style={styles.image}
-                                        />
-                                        <View style={styles.edit_check}>
-                                            <FontAwesome5 
-                                                name={'check'}
-                                                size={Dimensions.get('window').width / 40}
-                                                color={item.visibility ? '#558B2F' : '#000'}
-                                            />
-                                        </View>
-                                    </Pressable>
-                                )
-                            }  
-                        }
-
-                    }}
-                >
-                </FlatList>
 
         </View>
     )
@@ -1236,7 +1232,7 @@ const styles = StyleSheet.create({
     },
     aac_list: {
         width: Dimensions.get('window').width / 7,
-        height: Dimensions.get('window').height / 9,
+        height: Dimensions.get('window').height / 8,
         borderWidth: 1,
         borderColor: '#000000',
         alignItems: 'center',
@@ -1310,7 +1306,7 @@ const styles = StyleSheet.create({
     },
     modal_text: {
         color: '#fff',
-        fontSize: Dimensions.get('window').width / 30,
+        fontSize: Dimensions.get('window').width / 60,
     },
     modal_input: {
         width: Dimensions.get('window').width / 4,
@@ -1320,13 +1316,13 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         borderColor: '#000000',
         borderRadius: 5,
-        margin: 10
+        margin: 10,
     },
     modal_image :{
         width: Dimensions.get('window').width / 10,
         height: Dimensions.get('window').width / 10,
         resizeMode: 'contain',
-        margin: 30
+        margin: Dimensions.get('window').height / 20
     },
     color_white: {
         flex: 1,
@@ -1360,7 +1356,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         height: Dimensions.get('window').height / 14,
         width: Dimensions.get('window').width / 2,
-        marginTop: 20
+        marginTop: Dimensions.get('window').height / 50
     },
     modal_cancel: {
         flex: 1,
@@ -1385,5 +1381,27 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         borderWidth: 1,
         borderColor: '#fff'
+    },
+    top_modal_row: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    page_question: {
+        flexDirection: 'row',
+        position: 'relative',
+        left: '10%',
+        alignItems: 'center'
+    },
+    text_question: {
+        flexDirection: 'row',
+        position: 'relative',
+        right: '10%',
+        alignItems: 'center',
+        justifyContent: 'center'
+    },
+    modal_warning_text: {
+        fontSize: Dimensions.get('window').width / 80,
+        color: '#fa5c7c'
     }
 })

@@ -8,7 +8,7 @@ import {
     LogBox
 } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
-import { setPageData, setPageName, setPageLoading} from "../redux/actions";
+import { setPageData, setPageName, setPageLoading, setGoHome} from "../redux/actions";
 import { initFirstAAC } from "../utils/initDB";
 import SQLite from 'react-native-sqlite-storage';
 
@@ -41,6 +41,7 @@ export default function Splash({ navigation }) {
                         setDisplayText('Database Found. Loading Data.')
                         dispatch(setPageData(results.rows.raw()))
                         dispatch(setPageName(page))
+                        dispatch(setGoHome('Main'))
                         dispatch(setPageLoading(false))
                         setDisplayText('Finished Loading Database')
                     },

@@ -8,6 +8,11 @@ export const SET_TALKING = 'SET_TALKING';
 export const SET_PAGE_LOADING = 'SET_PAGE_LOADING';
 export const SET_IMAGE_PATH = 'SET_IMAGE_PATH';
 export const SET_IMAGE_DONE = 'SET_IMAGE_DONE';
+export const SET_SCREEN_WIDTH = 'SET_SCREEN_WIDTH';
+export const SET_SCREEN_HEIGHT = 'SET_SCREEN_HEIGHT';
+export const ADD_PAGE_NAME = 'ADD_PAGE_NAME';
+export const REMOVE_PAGE_NAME = 'REMOVE_PAGE_NAME';
+export const GO_HOME = 'GO_HOME';
 
 export const addWords = word => dispatch => {
     dispatch({
@@ -76,6 +81,41 @@ export const setImageDone = done => dispatch => {
     dispatch({
         type: SET_IMAGE_DONE,
         payload: done
+    })
+}
+
+export const setScreenWidth = width => dispatch => {
+    dispatch({
+        type: SET_SCREEN_WIDTH,
+        payload: width
+    })
+}
+
+export const setScreenHeight = height => dispatch => {
+    dispatch({
+        type: SET_SCREEN_HEIGHT,
+        payload: height
+    })
+}
+
+export const addPageName = page => dispatch => {
+    dispatch({
+        type: ADD_PAGE_NAME,
+        payload: page
+    })
+}
+
+export const removePageName = page => dispatch => {
+    dispatch({
+        type: REMOVE_PAGE_NAME,
+        payload: page
+    })
+}
+
+export const setGoHome = page => dispatch => {
+    dispatch({
+        type: GO_HOME,
+        payload: page
     })
 }
 
